@@ -19,33 +19,37 @@
  *
  */
 
- namespace OCA\ReadmeMD\Listeners;
+namespace OCA\ReadmeMD\Listeners;
 
- use OCP\EventDispatcher\Event;
- use OCP\EventDispatcher\IEventListener;
- use OCP\Util;
- use OCA\ReadmeMD\Services\Config ;
- use OCP\AppFramework\Services\IInitialState;
+use OCP\EventDispatcher\Event;
+use OCP\EventDispatcher\IEventListener;
+use OCP\Util;
+use OCA\ReadmeMD\Services\Config;
+use OCP\AppFramework\Services\IInitialState;
 
- class LoadAdditionalPublicScriptsListener implements IEventListener {
-    
+class LoadAdditionalPublicScriptsListener implements IEventListener {
+
+    public const SCRIPT_ASSET = 'files_readmemd-public';
+
     private Config $config;
     private IInitialState $initialState;
 
     public function __construct(Config $config, IInitialState $initialState) {
-		$this->initialState = $initialState;
-        $this->config = $config ;
-	}
-    
-    public function handle(Event $event): void {
-
-        Util::addscript('files_readmemd', 'files_readmemd-public');
-        $result = $this->config->snapshot()->toWireArray() ;
-        $this->initialState->provideInitialState('config',$result);
-
+        $this->initialState = $initialState;
+        $this->config = $config;
     }
 
-    
+    public function handle(Event $event): void {
+        $this->addScript('files_readmemd', self::SCRIPT_ASSET);
+        $result = $this->config->snapshot()->toWireArray();
+        $this->initialState->provideInitialState('config', $result);
+    }
 
-
+    /**
+     * Register the script with Nextcloud. Kept as a seam so tests can assert
+     * the asset without booting the server.
+     */
+    protected function addScript(string $app, string $script): void {
+        Util::addscript($app, $script);
+    }
 }

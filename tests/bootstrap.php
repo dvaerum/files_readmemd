@@ -1,11 +1,12 @@
 <?php
 declare(strict_types=1);
 
-// Bootstrap for the unit tests. The php:apache image has no composer vendor
-// dir, so the server's public interfaces and the app classes are loaded
-// directly. Paths are overridable so the same tests run outside that container.
-$ncRoot = getenv('NEXTCLOUD_ROOT') ?: '/var/www/html';
-$appRoot = getenv('APP_ROOT') ?: $ncRoot . '/custom_apps/files_readmemd';
+// Bootstrap for the unit tests. The server image has no composer vendor dir,
+// so its public interfaces and the app classes are loaded directly. Defaults
+// are derived from this file's location; the env vars override them when the
+// app runs outside a standard Nextcloud installation.
+$ncRoot = getenv('NEXTCLOUD_ROOT') ?: dirname(__DIR__, 3);
+$appRoot = getenv('APP_ROOT') ?: dirname(__DIR__);
 
 $files = [
     $ncRoot . '/lib/public/IConfig.php',
@@ -20,10 +21,17 @@ $files = [
     $ncRoot . '/lib/public/AppFramework/Http/FeaturePolicy.php',
     $ncRoot . '/lib/public/AppFramework/Http/TemplateResponse.php',
     $ncRoot . '/lib/public/Settings/ISettings.php',
+    $ncRoot . '/3rdparty/psr/event-dispatcher/src/StoppableEventInterface.php',
+    $ncRoot . '/lib/public/EventDispatcher/Event.php',
+    $ncRoot . '/lib/public/EventDispatcher/IEventListener.php',
+    $ncRoot . '/lib/public/AppFramework/Services/IInitialState.php',
+    $ncRoot . '/lib/public/Util.php',
     $appRoot . '/lib/ZoneDefinition.php',
     $appRoot . '/lib/Services/Config.php',
     $appRoot . '/lib/Services/ConfigSnapshot.php',
     $appRoot . '/lib/Controller/ConfigController.php',
+    $appRoot . '/lib/Listeners/LoadAdditionalScriptsListener.php',
+    $appRoot . '/lib/Listeners/LoadAdditionalPublicScriptsListener.php',
     $appRoot . '/lib/Settings/Admin/Engine.php',
 ];
 

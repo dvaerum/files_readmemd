@@ -44,6 +44,15 @@ describe('electForZone', () => {
 		expect(result.hidden).toBe(false)
 	})
 
+	it('elects only base names declared by each zone admin config', () => {
+		expect(elect('headermd', ['HEADER.md', 'NOTICE.md'], {
+			fileslist_header: ['NOTICE'],
+		}).baseName).toBe('NOTICE')
+		expect(elect('footermd', ['README.md', 'LICENSE.md'], {
+			fileslist_footer: ['LICENSE'],
+		}).baseName).toBe('LICENSE')
+	})
+
 	it('never elects candidates from disabled engines', () => {
 		expect(elect('headermd', ['HEADER.adoc', 'HEADER.html'])).toBeNull()
 		expect(elect('footermd', ['README.asciidoc', 'README.htm'])).toBeNull()

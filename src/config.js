@@ -3,8 +3,8 @@
  *
  * @license AGPL-3.0-or-later
  *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU Affero General Public License as
  * published by the Free Software Foundation, either version 3 of the
  * License, or (at your option) any later version.
  *
@@ -21,7 +21,8 @@
 import { generateUrl } from '@nextcloud/router'
 import axios from '@nextcloud/axios'
 import logger from './logger.js'
-import { zone, zoneIds } from './zones.js'
+import { bindAdminFileListActions } from './modules/adminFileList.js'
+import { zone, zoneForAdminToken } from './zones.js'
 
 document.addEventListener('DOMContentLoaded', () => {
 
@@ -65,43 +66,17 @@ document.addEventListener('DOMContentLoaded', () => {
 			})
 	}
 
-	// Fileslists — one handler per declared zone, no duplicated spellings.
+	// Fileslists — the DOM helper owns delegation and list updates; this file
+	// only maps the admin token to the endpoint declared in zones.json.
 
-	for (const id of zoneIds()) {
-		const { adminToken, endpointSegment } = zone(id)
-		const listId = 'readmeMD-filelist_' + adminToken
-		const urlFor = (fn) => 'apps/files_readmemd/config/filenames/' + endpointSegment + '/' + fn.replace('?', '%3F')
-
-		// DELETE — delegate on the list so entries added after load get a handler too.
-		document.getElementById(listId).addEventListener('click', function(Event) {
-			const button = Event.target.closest('.readmeMD-filelist_delete')
-			if (!button) {
-				return
-			}
-
-			const fn = button.dataset.filename
-
-			axios.delete(generateUrl(urlFor(fn)))
-				.then(function() {
-					button.parentNode.remove()
-				})
-				.catch(function(error) {
-					logger.error('Failed to remove ' + fn + ' from ' + adminToken, error)
-				})
-		})
-
-		// ADD
-		document.getElementById('readmeMD-filelist_submit-' + adminToken).onclick = function() {
-			const fn = document.getElementById('readmeMD-filelist_name-' + adminToken).value
-
-			axios.put(generateUrl(urlFor(fn)))
-				.then(function() {
-					document.getElementById(listId).insertAdjacentHTML('beforeend',
-						'<li class="readmeMD-filelist" id="readmeMD-filelist-' + fn + '">'
-                         + '<a data-zone="' + adminToken + '" data-filename="' + fn + '" class="readmeMD-filelist_delete icon-inline icon icon-delete"></a>'
-                         + fn + '</li>')
-				})
-		}
+	const urlFor = (adminToken, fileName) => {
+		const { endpointSegment } = zone(zoneForAdminToken(adminToken))
+		return 'apps/files_readmemd/config/filenames/' + endpointSegment + '/' + fileName.replace('?', '%3F')
 	}
+
+	bindAdminFileListActions(document, {
+		add: ({ zone: adminToken, fileName }) => axios.put(generateUrl(urlFor(adminToken, fileName))),
+		remove: ({ zone: adminToken, fileName }) => axios.delete(generateUrl(urlFor(adminToken, fileName))),
+	})
 
 })

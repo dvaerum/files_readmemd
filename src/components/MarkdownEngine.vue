@@ -9,15 +9,7 @@
 <script>
 import { generateUrl } from '@nextcloud/router'
 import logger from '../logger.js'
-import markdownit from 'markdown-it'
-import markdownitcontainer from 'markdown-it-container'
-import markdownittasklist from 'markdown-it-task-lists'
-import implicitFigures from 'markdown-it-image-figures'
-import markdownitimsize from 'markdown-it-imsize'
-import markdownitanchor from 'markdown-it-anchor'
-import markdownittocdoneright from 'markdown-it-toc-done-right'
-import markdownitreplacelink from 'markdown-it-replace-link'
-import { full as markdownitemoji } from 'markdown-it-emoji'
+import { createMarkdownConverter } from '../modules/markdownConverter.js'
 
 export default {
 	name: 'MarkdownEngine',
@@ -51,49 +43,11 @@ export default {
 
 	created() {
 
-		const slugify = (s) => 'md-' + encodeURIComponent(String(s).trim().toLowerCase().replace(/\s+/g, '-'))
-
-		this.converter = markdownit({ html: false, breaks: true, linkify: true, typographer: true })
-			.enable('strikethrough')
-	        .enable('table')
-			.use(markdownitcontainer, 'info')
-			.use(markdownitcontainer, 'warn')
-			.use(markdownitcontainer, 'error')
-			.use(markdownitcontainer, 'success')
-			.use(markdownittasklist, { enabled: true })
-	        .use(implicitFigures)
-			.use(markdownitimsize)
-			.use(markdownitemoji)
-			.use(markdownitanchor, { slugify })
-			.use(markdownittocdoneright)
-			.use(markdownitreplacelink, {
-				 replaceLink: (link, env) => {
-					if (link.startsWith('mailto:') || link.startsWith('http://') || link.startsWith('https://') || link.startsWith(generateUrl('core/preview'))) {
-						return link
-					} else {
-						return this.fileListAdapter.linkUrl(link, this.path)
-					}
-				},
-			})
-
-		const defaultRender = this.converter.renderer.rules.link_open || function(tokens, idx, options, env, self) {
-			return self.renderToken(tokens, idx, options)
-		}
-
-		// force open to new tabs
-		this.converter.renderer.rules.link_open = function(tokens, idx, options, env, self) {
-			// If you are sure other plugins can't add `target` - drop check below
-			const aIndex = tokens[idx].attrIndex('target')
-
-			if (aIndex < 0) {
-				tokens[idx].attrPush(['target', '_blank']) // add new attribute
-			} else {
-				tokens[idx].attrs[aIndex][1] = '_blank' // replace value of existing attr
-			}
-
-			// pass token to default renderer.
-			return defaultRender(tokens, idx, options, env, self)
-		}
+		this.converter = createMarkdownConverter({
+			linkUrl: (link, path) => this.fileListAdapter.linkUrl(link, path),
+			previewUrl: generateUrl('core/preview'),
+			path: () => this.path,
+		})
 
 		// now choose the right CSS
 		if (this.fileListAdapter.mode === 'private') {
