@@ -62,11 +62,11 @@ class Config {
             $this->setAppValue('disable_workspace','true') ;
         }
 
-        if (null === json_decode($this->getAppValue('fileslist_header')) ){
+        if (null === json_decode((string) $this->getAppValue('fileslist_header')) ){
             $this->setAppValue('fileslist_header',json_encode(array('HEADER'))) ;
         }
 
-        if (null === json_decode($this->getAppValue('fileslist_footer')) ){
+        if (null === json_decode((string) $this->getAppValue('fileslist_footer')) ){
             $this->setAppValue('fileslist_footer',json_encode(array('README'))) ;
         }
 
@@ -85,8 +85,8 @@ class Config {
 
         $allValue['show_asciidoc'] = $this->getAppValue('show_asciidoc') ;
         $allValue['show_html'] = $this->getAppValue('show_html') ;
-        $allValue['fileslist_header'] = json_decode($this->getAppValue('fileslist_header')) ;
-        $allValue['fileslist_footer'] = json_decode($this->getAppValue('fileslist_footer'));
+        $allValue['fileslist_header'] = json_decode((string) $this->getAppValue('fileslist_header')) ;
+        $allValue['fileslist_footer'] = json_decode((string) $this->getAppValue('fileslist_footer'));
 
         return $allValue ;
     }

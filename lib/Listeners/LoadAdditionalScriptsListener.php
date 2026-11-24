@@ -29,7 +29,8 @@
 
  class LoadAdditionalScriptsListener implements IEventListener {
     
-    protected InitialStateProvider $initialStateProvider;
+    private Config $config;
+    private IInitialState $initialState;
 
     public function __construct(Config $config, IInitialState $initialState) {
 		$this->initialState = $initialState;

@@ -47,3 +47,9 @@ Admin section in setting let you tweak README.md :
 
 - Multi rendering engine are available
 - You can choose which filenames are to be used for header/footer content.
+
+# Development and CI
+
+The Firefox visual/structural test harness lives in [`ci/`](ci/README.md).
+It runs locally with `ci/run.sh all` and in GitHub Actions via
+[`.github/workflows/e2e.yml`](.github/workflows/e2e.yml).

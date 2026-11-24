@@ -20,6 +20,7 @@
 
 import { generateUrl } from '@nextcloud/router'
 import axios from '@nextcloud/axios'
+import logger from './logger.js'
 
 document.addEventListener('DOMContentLoaded', () => {
 
@@ -39,8 +40,8 @@ document.addEventListener('DOMContentLoaded', () => {
 				},
 			},
 		)
-			.success(function(json) {
-			// console.log(json) ;
+			.catch(function(error) {
+				logger.error('Failed to save show_asciidoc', error)
 			})
 	}
 
@@ -58,28 +59,32 @@ document.addEventListener('DOMContentLoaded', () => {
 				},
 			},
 		)
-			.success(function(json) {
-			// console.log(json) ;
+			.catch(function(error) {
+				logger.error('Failed to save show_html', error)
 			})
 	}
 
 	// Fileslists
 
-	// DELETE
-	const els = document.getElementsByClassName('readmeMD-filelist_delete');
-	[].forEach.call(els, (el) => {
-		el.onclick = function(Event) {
+	// DELETE — delegate on the list so entries added after load get a handler too.
+	for (const zone of ['header', 'footer']) {
+		document.getElementById('readmeMD-filelist_' + zone).addEventListener('click', function(Event) {
+			const button = Event.target.closest('.readmeMD-filelist_delete')
+			if (!button) {
+				return
+			}
 
-			const fn = Event.target.dataset.filename
-			const zone = Event.target.dataset.zone
+			const fn = button.dataset.filename
 
 			axios.delete(generateUrl('apps/files_readmemd/config/filenames/' + zone + '/' + fn.replace('?', '%3F')))
-				.then(function(data) {
-					const parentElement = Event.target.parentNode
-					parentElement.parentNode.removeChild(parentElement)
+				.then(function() {
+					button.parentNode.remove()
 				})
-		}
-	})
+				.catch(function(error) {
+					logger.error('Failed to remove ' + fn + ' from ' + zone, error)
+				})
+		})
+	}
 
 	// ADD
 

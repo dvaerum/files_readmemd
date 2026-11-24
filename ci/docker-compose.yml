@@ -1,0 +1,102 @@
+# CI stack for files_readmemd. Driven by ci/run.sh; see ci/README.md.
+#
+# All relative paths are resolved from this file's directory (ci/), so the
+# same stack works from a local checkout and from a standalone GitHub fork.
+
+name: files_readmemd-ci
+
+services:
+  db:
+    image: postgres:alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: nextcloud
+      POSTGRES_USER: nextcloud
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-nextcloud-ci-password}
+    volumes:
+      - db:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h localhost -U nextcloud -d nextcloud"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:alpine
+    restart: unless-stopped
+    volumes:
+      - redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    image: ${NEXTCLOUD_IMAGE:-nextcloud:29-apache}
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_DB: nextcloud
+      POSTGRES_USER: nextcloud
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-nextcloud-ci-password}
+      REDIS_HOST: redis
+      NEXTCLOUD_ADMIN_USER: ${NC_ADMIN_USER:-admin}
+      NEXTCLOUD_ADMIN_PASSWORD: ${NC_ADMIN_PASSWORD:-admin-password-please-change-me}
+      # Firefox reaches the app by service name from the Playwright container.
+      NEXTCLOUD_TRUSTED_DOMAINS: app localhost 127.0.0.1
+    ports:
+      - "${NEXTCLOUD_HOST_PORT:-8290}:80"
+    # Bind mounting the app can create custom_apps as root while entrypoint
+    # hooks run as www-data; fix the parent before the official entrypoint.
+    # An explicit command is needed because overriding entrypoint drops CMD.
+    command: apache2-foreground
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        mkdir -p /var/www/html/custom_apps
+        chown www-data:www-data /var/www/html/custom_apps
+        exec /entrypoint.sh "$@"
+      - --
+    volumes:
+      - nextcloud:/var/www/html
+      - ${APP_SOURCE:-..}:/var/www/html/custom_apps/files_readmemd:ro
+      - ./hooks/before-starting:/docker-entrypoint-hooks.d/before-starting:ro
+
+  # Real Firefox runs in the pinned Playwright image, so local runs and GitHub
+  # Actions use the exact same browser, fonts and rendering. Screenshots are
+  # therefore comparable across hosts without installing browser deps locally.
+  playwright:
+    image: ${PLAYWRIGHT_IMAGE:-mcr.microsoft.com/playwright:v1.65.1-noble}
+    # Share the app's network namespace: Firefox then reaches Nextcloud on a
+    # fixed IPv4 loopback address, with no service-name DNS or host port.
+    network_mode: service:app
+    working_dir: /work
+    user: "${CI_UID:-1000}:${CI_GID:-1000}"
+    environment:
+      HOME: /tmp
+      CI: "true"
+      BASE_URL: http://127.0.0.1
+      NEXTCLOUD_VERSION: ${NEXTCLOUD_VERSION:-29-apache}
+      CI_STATE: ${CI_STATE:-default}
+      SHARE_TOKEN: ${SHARE_TOKEN:-}
+      UPDATE_SNAPSHOTS: ${UPDATE_SNAPSHOTS:-0}
+    volumes:
+      - .:/work
+    depends_on:
+      app:
+        condition: service_started
+
+volumes:
+  db:
+    name: ${CI_PROJECT:-files_readmemd-ci}_db_${NEXTCLOUD_VERSION:-29-apache}
+  redis:
+    name: ${CI_PROJECT:-files_readmemd-ci}_redis
+  nextcloud:
+    name: ${CI_PROJECT:-files_readmemd-ci}_nextcloud_${NEXTCLOUD_VERSION:-29-apache}

@@ -1,0 +1,16 @@
+{
+  "name": "files-readmemd-ci",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Firefox visual and structural CI for the files_readmemd Nextcloud app",
+  "scripts": {
+    "test": "playwright test",
+    "update": "playwright test --update-snapshots"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.65.1"
+  }
+}

@@ -1,0 +1,10 @@
+/* Injected by Playwright while taking baselines. Hide only UI that moves
+   between runs; the app's rendered header/footer markup is left untouched. */
+.notistack-snackbar,
+.toast,
+.notification,
+.ui-dialog,
+#app-sidebar,
+#app-navigation-toggle {
+  visibility: hidden !important;
+}

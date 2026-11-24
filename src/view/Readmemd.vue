@@ -10,7 +10,9 @@
 			:mode="mode"
 			:path="path" />
 		<HtmlEngine v-if="engineType == 'html'" :content="content" />
-		<AsciidocEngine v-if="engineType == 'asciidoc'" :content="content" />
+		<AsciidocEngine v-if="engineType == 'asciidoc'"
+			:content="content"
+			:mode="mode" />
 	</div>
 </template>
 
@@ -22,6 +24,7 @@ import axios from '@nextcloud/axios'
 import { generateUrl } from '@nextcloud/router'
 import logger from '../logger.js'
 import { loadState } from '@nextcloud/initial-state'
+import { engineType, fileNamesForZone } from '../utils/fileSelection.js'
 
 export default {
 	name: 'Readmemd',
@@ -44,73 +47,11 @@ export default {
 
 	computed: {
 		engineType() {
-			const ext = this.fileName.substr(this.fileName.lastIndexOf('.') + 1)
-			if ((ext === 'html' || ext === 'htm') && this.config.show_html === 'true') { return 'html' }
-			if ((ext === 'adoc' || ext === 'asciidoc') && this.config.show_asciidoc === 'true') { return 'asciidoc' }
-			if (ext === 'md' || ext === 'markdown') { return 'markdown' }
-			return 'Unsupported Engine'
+			return engineType(this.fileName, this.config)
 		},
 
 		fileList() {
-			if (this.zone === 'footermd') {
-				const FFNames = []
-				this.config.fileslist_footer.forEach((fn) => {
-					Array.prototype.push.apply(FFNames, [
-						fn + '.md',
-						fn + '.markdown',
-						'.' + fn + '.md',
-						'.' + fn + '.markdown',
-					])
-
-					if (this.config.show_asciidoc === 'true') {
-						Array.prototype.push.apply(FFNames, [
-							fn + '.adoc',
-							fn + '.asciidoc',
-							'.' + fn + '.adoc',
-							'.' + fn + '.asciidoc',
-						])
-					}
-
-					if (this.config.show_html === 'true') {
-						Array.prototype.push.apply(FFNames, [
-							fn + '.htm',
-							fn + '.html',
-							'.' + fn + '.htm',
-							'.' + fn + '.html',
-						])
-					}
-				})
-				return FFNames
-			} else {
-				const HFNames = []
-				this.config.fileslist_header.forEach((fn) => {
-					Array.prototype.push.apply(HFNames, [
-						fn + '.md',
-						fn + '.markdown',
-						'.' + fn + '.md',
-						'.' + fn + '.markdown',
-					])
-
-					if (this.config.show_asciidoc === 'true') {
-						Array.prototype.push.apply(HFNames, [
-							fn + '.adoc',
-							fn + '.asciidoc',
-							'.' + fn + '.adoc',
-							'.' + fn + '.asciidoc',
-						])
-					}
-
-					if (this.config.show_html === 'true') {
-						Array.prototype.push.apply(HFNames, [
-							fn + '.htm',
-							fn + '.html',
-							'.' + fn + '.htm',
-							'.' + fn + '.html',
-						])
-					}
-				})
-				return HFNames
-			}
+			return fileNamesForZone(this.zone, this.config)
 		},
 
 		mode() {
@@ -128,7 +69,7 @@ export default {
 	watch: {
 		async path() {
 			this.content = await this.fillContent()
-			if (this.zone == "footermd" && this.content !== null ) {
+			if (this.zone === 'footermd' && this.content !== null) {
 				this.adjustCSS()
 			}
 		},
@@ -136,7 +77,7 @@ export default {
 
 	async mounted() {
 		this.content = await this.fillContent()
-		if (this.zone == "footermd" && this.content !== null ) {
+		if (this.zone === 'footermd' && this.content !== null) {
 			this.adjustCSS()
 		}
 	},

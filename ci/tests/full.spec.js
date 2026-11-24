@@ -1,0 +1,138 @@
+const { test, expect } = require('@playwright/test')
+const {
+  login,
+  openFiles,
+  watchErrors,
+  appErrors,
+  readAppConfig,
+} = require('./helpers')
+
+const state = process.env.CI_STATE || 'default'
+const FIXTURE_DIR = 'README-dev-fixtures'
+
+test.describe(`files_readmemd visual matrix (${state})`, () => {
+  test('settings page and config API @state=default', async ({ page }) => {
+    const errors = watchErrors(page)
+    await login(page)
+    await page.goto('/index.php/settings/admin/files_readmemd')
+    await page.locator('#readmeMD-engine').waitFor({ state: 'visible' })
+
+    await expect(page.locator('#readmeMD-engine-asciidoc')).not.toBeChecked()
+    await expect(page.locator('#readmeMD-engine-html')).not.toBeChecked()
+    await expect(page.locator('a[data-zone="header"][data-filename="HEADER"]')).toBeVisible()
+    await expect(page.locator('a[data-zone="footer"][data-filename="README"]')).toBeVisible()
+
+    const config = await readAppConfig(page)
+    expect(config).toMatchObject({
+      show_asciidoc: 'false',
+      show_html: 'false',
+      yellow_back: 'true',
+      show_title: 'true',
+      auto_refresh: 'false',
+      disable_workspace: 'true',
+      fileslist_header: ['HEADER'],
+      fileslist_footer: ['README'],
+    })
+
+    await expect(page.locator('#app-content')).toHaveScreenshot('settings-page.png')
+    expect(appErrors(errors)).toEqual([])
+  })
+
+  test('markdown header and footer render @state=default', async ({ page }) => {
+    const errors = watchErrors(page)
+    await login(page)
+    await openFiles(page, FIXTURE_DIR)
+
+    const header = page.locator('.headermd[data-filename="HEADER.md"] .markdown-body')
+    const footer = page.locator('.footermd[data-filename=".README.md"] .markdown-body')
+    await header.waitFor({ state: 'visible' })
+    await footer.waitFor({ state: 'visible' })
+    await expect(header.locator('h1')).toHaveText('Fixture HEADER')
+    await expect(footer.locator('h1')).toHaveText('Hidden README')
+
+    await expect(header).toHaveScreenshot('header-markdown.png')
+    await expect(footer).toHaveScreenshot('footer-markdown.png')
+    expect(appErrors(errors)).toEqual([])
+  })
+
+  test('markdown feature structure @state=features', async ({ page }) => {
+    const errors = watchErrors(page)
+    await login(page)
+    await openFiles(page, FIXTURE_DIR)
+
+    const footer = page.locator('.footermd[data-filename="FEATURES.md"] .markdown-body')
+    await footer.waitFor({ state: 'visible' })
+    await expect(footer).toContainText('Heading one')
+
+    expect(await footer.locator('h1, h2').count()).toBe(2)
+    expect(await footer.locator('table').count()).toBe(1)
+    expect(await footer.locator('input[type="checkbox"]').count()).toBe(2)
+    expect(await footer.locator('pre code').count()).toBe(1)
+    await expect(footer).toContainText('🎉')
+    await expect(footer).toContainText('⚠️')
+
+    await expect(footer).toHaveScreenshot('footer-features.png')
+    expect(appErrors(errors)).toEqual([])
+  })
+
+  test('AsciiDoc and raw HTML engines @state=engines-on', async ({ page }) => {
+    const errors = watchErrors(page)
+    await login(page)
+    await openFiles(page, FIXTURE_DIR)
+
+    const header = page.locator('.headermd[data-filename="HEADER.adoc"] .paragraph strong')
+    const footer = page.locator('.footermd[data-filename="README.html"] .html-body')
+    await header.waitFor({ state: 'visible' })
+    await footer.waitFor({ state: 'visible' })
+    await expect(header).toHaveText('AsciiDoc')
+    await expect(footer).toContainText('Fixture HTML footer')
+
+    await expect(page.locator('.headermd')).toHaveScreenshot('header-asciidoc.png')
+    await expect(page.locator('.footermd')).toHaveScreenshot('footer-html.png')
+    expect(appErrors(errors)).toEqual([])
+  })
+
+  test('extra header and footer names @state=filelist-extra', async ({ page }) => {
+    const errors = watchErrors(page)
+    await login(page)
+    await page.goto('/index.php/settings/admin/files_readmemd')
+
+    await expect(page.locator('a[data-zone="header"][data-filename="VISUALH"]')).toBeVisible()
+    await expect(page.locator('a[data-zone="footer"][data-filename="VISUALF"]')).toBeVisible()
+
+    await expect(page.locator('#app-content')).toHaveScreenshot('settings-extra-names.png')
+    expect(appErrors(errors)).toEqual([])
+  })
+
+  test('subfolder switches footer @state=default', async ({ page }) => {
+    const errors = watchErrors(page)
+    await login(page)
+    await openFiles(page, `${FIXTURE_DIR}/subfolder`)
+
+    const footer = page.locator('.footermd[data-filename="README.md"] .markdown-body')
+    await footer.waitFor({ state: 'visible' })
+    await expect(footer.locator('h1')).toHaveText('Subfolder README')
+    await expect(footer).toHaveScreenshot('footer-subfolder.png')
+    expect(appErrors(errors)).toEqual([])
+  })
+
+  test('public share renders both zones @state=default', async ({ page }) => {
+    const token = process.env.SHARE_TOKEN
+    expect(token, 'SHARE_TOKEN must be provided by ci/run.sh').toBeTruthy()
+
+    const errors = watchErrors(page)
+    await page.goto(`/s/${token}`)
+    // #isPublic is a hidden input, so it can only be attached, never visible.
+    await page.locator('#isPublic').waitFor({ state: 'attached' })
+    await expect(page.locator('#isPublic')).toHaveCount(1)
+
+    const header = page.locator('.headermd[data-filename="HEADER.md"] .markdown-body')
+    const footer = page.locator('.footermd[data-filename=".README.md"] .markdown-body')
+    await header.waitFor({ state: 'visible' })
+    await footer.waitFor({ state: 'visible' })
+
+    await expect(header).toHaveScreenshot('share-header.png')
+    await expect(footer).toHaveScreenshot('share-footer.png')
+    expect(appErrors(errors)).toEqual([])
+  })
+})

@@ -18,6 +18,10 @@ export default {
 			type: String,
 			default: '',
 		},
+		mode: {
+			type: String,
+			default: 'private',
+		},
 	},
 
 	data() {

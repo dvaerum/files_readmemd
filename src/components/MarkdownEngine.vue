@@ -36,21 +36,6 @@ export default {
 		},
 	},
 
-	computer: {
-		isDarkTheme() {
-			import('github-markdown-css/github-markdown-dark.css')
-			return document.body.dataset.themes.startsWith('dark')
-		},
-		isDefaultTheme() {
-			import('github-markdown-css/github-markdown.css')
-			return document.body.dataset.themes === 'default'
-		},
-
-		isLightTheme() {
-
-		},
-	},
-
 	data() {
 		return {
 			renderedContent: '',

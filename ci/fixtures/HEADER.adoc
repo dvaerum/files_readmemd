@@ -1,0 +1,4 @@
+= Fixture AsciiDoc Header
+:toc:
+
+This is *AsciiDoc* content rendered by the Asciidoctor engine.
