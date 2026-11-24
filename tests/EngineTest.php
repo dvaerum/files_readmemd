@@ -14,13 +14,34 @@ use PHPUnit\Framework\TestCase;
  */
 class EngineTest extends TestCase
 {
-    public function testEngine(): void
+    /** @param array<string, string> $values */
+    private function newEngine(array $values = []): Engine
     {
         $configMock = $this->createMock(IConfig::class);
-        $configMock->method('getAppValue')->willReturn(null);
-        $configMock->method('setAppValue')->willReturn(null);
-        $engine = new Engine(new Config($configMock, 'files_readmemd'), $this->createMock(IL10N::class));
+        $configMock->method('getAppValue')->willReturnCallback(
+            function (string $appName, string $key, ?string $default = null) use ($values): ?string {
+                return $values[$key] ?? $default;
+            }
+        );
+
+        return new Engine(new Config($configMock, 'files_readmemd'), $this->createMock(IL10N::class));
+    }
+
+    public function testEngine(): void
+    {
+        $engine = $this->newEngine();
         self::assertSame('files_readmemd', $engine->getSection());
         self::assertSame(50, $engine->getPriority());
+    }
+
+    public function testGetFormExposesTypedEngineState(): void
+    {
+        self::assertSame([
+            'show_asciidoc' => true,
+            'show_html' => false,
+        ], $this->newEngine([
+            'show_asciidoc' => '1',
+            'show_html' => 'false',
+        ])->getForm()->getParams());
     }
 }

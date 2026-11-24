@@ -40,7 +40,7 @@
     public function handle(Event $event): void {
 
         Util::addscript('files_readmemd', 'files_readmemd-main');
-        $result = $this->config-> getAllAppValue() ;
+        $result = $this->config->snapshot()->toWireArray() ;
         $this->initialState->provideInitialState('config',$result);
 
     }

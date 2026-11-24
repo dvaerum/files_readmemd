@@ -209,20 +209,33 @@ queries to callers and one normalized snapshot to the endpoint and initial
 state. The wire map stays string-valued during migration so the browser
 harness and existing browser assets keep working.
 
-Illustrative interface, to be settled by the Design It Twice gate:
+Interface settled by the Design It Twice gate:
+
+- **Zone parameter:** a `Zone` value object now would duplicate the vocabulary
+  that ADR-0004 assigns to Phase 3. Use the existing admin tokens `header` /
+  `footer` at this seam; Phase 3 replaces the token with the single zone
+  declaration without changing callers.
+- **Snapshot shape:** a typed, immutable `ConfigSnapshot` built from the raw
+  app values, not a thin wrapper over the raw map. It owns defaults, boolean
+  parsing and JSON list decoding; `Config` owns storage and named queries. The
+  endpoint and initial state both emit `toWireArray()`.
 
 ```php
-final class Config {
-  public function snapshot(): ConfigSnapshot;
+final class ConfigSnapshot {
   public function isEngineEnabled(string $engine): bool;
-  public function zoneBaseNames(Zone $zone): array; // list<string>
-  public function setZoneBaseNames(Zone $zone, array $names): void;
-  public function addZoneBaseName(Zone $zone, string $name): void;
-  public function removeZoneBaseName(Zone $zone, string $name): void;
+  public function baseNamesForZone(string $zone): array; // list<string>
+  public function toWireArray(): array; // eight legacy string/list keys
 }
 
-final class ConfigSnapshot {
-  public function toWireArray(): array; // eight legacy string/list keys
+class Config {
+  public function snapshot(): ConfigSnapshot;
+  public function isEngineEnabled(string $engine): bool;
+  public function zoneBaseNames(string $zone): array;
+  public function setEngineEnabled(string $engine, bool $enabled): void;
+  public function setFlag(string $key, bool $enabled): void;
+  public function setZoneBaseNames(string $zone, array $names): void;
+  public function addZoneBaseName(string $zone, string $name): void;
+  public function removeZoneBaseName(string $zone, string $name): void;
 }
 ```
 

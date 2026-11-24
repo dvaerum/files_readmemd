@@ -23,6 +23,7 @@ namespace OCA\ReadmeMD\Controller ;
 
 use OCP\AppFramework\Controller  ;
 use OCA\ReadmeMD\Services\Config ;
+use OCA\ReadmeMD\Services\ConfigSnapshot;
 use OCP\IRequest;
 
 class ConfigController extends Controller {
@@ -34,69 +35,38 @@ class ConfigController extends Controller {
 
         $this->config = $config;
     }
-    
+
     /**
      * @NoAdminRequired
      * @PublicPage
-    */
+     */
     public function getConfig() {
-        $params = [
-                "show_asciidoc" => $this->config->getAppValue("show_asciidoc"),
-                    "show_html" => $this->config->getAppValue("show_html")    ,
-                  "yellow_back" => $this->config->getAppValue("yellow_back")  ,
-                   "show_title" => $this->config->getAppValue("show_title")   ,
-                 "auto_refresh" => $this->config->getAppValue("auto_refresh") ,
-            "disable_workspace" => $this->config->getAppValue("disable_workspace") ,
-             "fileslist_header" => json_decode($this->config->getAppValue('fileslist_header')),
-             "fileslist_footer" => json_decode($this->config->getAppValue('fileslist_footer'))
-        ];
-        return $params ;
+        return $this->config->snapshot()->toWireArray();
     }
 
-    public function setConfig($key,$value) {
-        $this->config->setAppValue($key,$value)  ;
+    public function setConfig($key, $value) {
+        $key = (string) $key;
+        $this->config->setWireValue($key, (string) $value);
 
-        return  $this->config->getAppValue($key) ;
+        return $this->config->wireValue($key);
     }
 
-    public function removeFileName($file,$zone) {
-        
-        if ($zone === "header") {
-            $FL = json_decode($this->config->getAppValue('fileslist_header')) ;
-            $idx = array_search($file,$FL) ;
-            if ($idx !== false) {
-                array_splice($FL,$idx,1) ;
-                $resultat = $this->config->setAppValue('fileslist_header',json_encode($FL)) ;
-            }
+    public function removeFileName($file, $zone) {
+        if (!ConfigSnapshot::isKnownZone((string) $zone)) {
+            return null;
         }
-
-        if ($zone === "footer") {
-            $FL = json_decode($this->config->getAppValue('fileslist_footer')) ;
-            $idx = array_search($file,$FL) ;
-            if ($idx !== false) {
-                array_splice($FL,$idx,1) ;
-                $resultat = $this->config->setAppValue('fileslist_footer',json_encode($FL)) ;
-                return $resultat ;
-            }
-        }
-        
+        $this->config->removeZoneBaseName((string) $zone, (string) $file);
     }
 
-    public function addFileName ($file,$zone) {
-
-        if ($zone === "header") {
-            $FL = json_decode($this->config->getAppValue('fileslist_header')) ;
-            array_push($FL,$file) ;
-            $this->setConfig('fileslist_header',json_encode($FL)) ;
+    public function addFileName ($file, $zone) {
+        if (!ConfigSnapshot::isKnownZone((string) $zone)) {
+            return null;
         }
+        $this->config->addZoneBaseName((string) $zone, (string) $file);
 
-        if ($zone === "footer") {
-            $FL = json_decode($this->config->getAppValue('fileslist_footer')) ;
-            array_push($FL,$file) ;
-            $this->setConfig('fileslist_footer',json_encode($FL)) ;
-            return "success" ;
+        if ($zone === 'footer') {
+            return 'success' ;
         }
-
-    } 
+    }
 
 }

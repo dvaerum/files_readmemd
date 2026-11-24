@@ -9,16 +9,17 @@ use PHPUnit\Framework\TestCase;
 
 /**
  * @covers \OCA\ReadmeMD\Services\Config
+ * @covers \OCA\ReadmeMD\Services\ConfigSnapshot
  */
 class ConfigTest extends TestCase
 {
-    private Config $config;
-
     /** @var array<string, string> */
     private array $values = [];
 
-    public function setUp(): void
+    /** @param array<string, string> $values */
+    private function newConfig(array $values = []): Config
     {
+        $this->values = $values;
         $configMock = $this->createMock(IConfig::class);
         $configMock->method('getAppValue')->willReturnCallback(
             function (string $appName, string $key, ?string $default = null): ?string {
@@ -30,35 +31,110 @@ class ConfigTest extends TestCase
                 $this->values[$key] = $value;
             }
         );
-        $this->config = new Config($configMock, 'files_readmemd');
+
+        return new Config($configMock, 'files_readmemd');
     }
 
-    public function testSetDefaults(): void
+    public function testSnapshotDefaults(): void
     {
-        self::assertSame('false', $this->config->getAppValue('show_asciidoc'));
-        self::assertSame('false', $this->config->getAppValue('show_html'));
-        self::assertSame('true', $this->config->getAppValue('show_title'));
-        self::assertSame('true', $this->config->getAppValue('yellow_back'));
-        self::assertSame('false', $this->config->getAppValue('auto_refresh'));
-        self::assertSame('true', $this->config->getAppValue('disable_workspace'));
-        self::assertSame('["HEADER"]', $this->config->getAppValue('fileslist_header'));
-        self::assertSame('["README"]', $this->config->getAppValue('fileslist_footer'));
-    }
+        $config = $this->newConfig();
+        $snapshot = $config->snapshot();
 
-    public function testGetAllAppValue(): void
-    {
+        self::assertFalse($snapshot->isEngineEnabled('asciidoc'));
+        self::assertFalse($snapshot->isEngineEnabled('html'));
+        self::assertSame(['HEADER'], $snapshot->baseNamesForZone('header'));
+        self::assertSame(['README'], $snapshot->baseNamesForZone('footer'));
         self::assertSame([
             'show_asciidoc' => 'false',
             'show_html' => 'false',
+            'yellow_back' => 'true',
+            'show_title' => 'true',
+            'auto_refresh' => 'false',
+            'disable_workspace' => 'true',
             'fileslist_header' => ['HEADER'],
             'fileslist_footer' => ['README'],
-        ], $this->config->getAllAppValue());
+        ], $snapshot->toWireArray());
+        // Defaults are derived on read; constructing config has no write side effect.
+        self::assertSame([], $this->values);
     }
 
-    public function testGetSetAppValue(): void
+    public function testMalformedZoneListsFallBackToDefaults(): void
     {
-        self::assertSame('false', $this->config->getAppValue('show_asciidoc'));
-        $this->config->setAppValue('show_asciidoc', 'true');
-        self::assertSame('true', $this->config->getAppValue('show_asciidoc'));
+        $config = $this->newConfig([
+            'fileslist_header' => '{"not":"a list"}',
+            'fileslist_footer' => '"README"',
+        ]);
+
+        self::assertSame(['HEADER'], $config->zoneBaseNames('header'));
+        self::assertSame(['README'], $config->zoneBaseNames('footer'));
+    }
+
+    public function testBooleanParsing(): void
+    {
+        $snapshot = $this->newConfig([
+            'show_asciidoc' => '1',
+            'show_html' => 'ON',
+            'show_title' => 'no',
+            'yellow_back' => 'garbage',
+            'auto_refresh' => 'TRUE',
+            'disable_workspace' => '',
+        ])->snapshot();
+
+        self::assertSame([
+            'show_asciidoc' => 'true',
+            'show_html' => 'true',
+            'yellow_back' => 'true',
+            'show_title' => 'false',
+            'auto_refresh' => 'true',
+            'disable_workspace' => 'false',
+            'fileslist_header' => ['HEADER'],
+            'fileslist_footer' => ['README'],
+        ], $snapshot->toWireArray());
+    }
+
+    public function testOrderedAddAndRemoveZoneBaseNames(): void
+    {
+        $config = $this->newConfig(['fileslist_header' => '["HEADER","EXTRA"]']);
+
+        $config->addZoneBaseName('header', 'FOO');
+        $config->addZoneBaseName('header', 'BAR');
+        $config->removeZoneBaseName('header', 'HEADER');
+        $config->removeZoneBaseName('header', 'MISSING');
+
+        self::assertSame(['EXTRA', 'FOO', 'BAR'], $config->zoneBaseNames('header'));
+        self::assertSame(['README'], $config->zoneBaseNames('footer'));
+    }
+
+    public function testTypedSettersNormalizeWireValues(): void
+    {
+        $config = $this->newConfig();
+        $config->setEngineEnabled('html', true);
+        $config->setFlag('show_title', false);
+        $config->setZoneBaseNames('footer', ['README', 'FEATURES']);
+
+        self::assertSame('true', $this->values['show_html']);
+        self::assertSame('false', $this->values['show_title']);
+        self::assertSame('["README","FEATURES"]', $this->values['fileslist_footer']);
+        self::assertTrue($config->isEngineEnabled('html'));
+        self::assertSame(['README', 'FEATURES'], $config->zoneBaseNames('footer'));
+    }
+
+    public function testUnknownZoneAndEngineAreRejected(): void
+    {
+        $config = $this->newConfig();
+
+        try {
+            $config->zoneBaseNames('sidebar');
+            self::fail('unknown zone was accepted');
+        } catch (\InvalidArgumentException $e) {
+            self::assertStringContainsString('sidebar', $e->getMessage());
+        }
+
+        try {
+            $config->isEngineEnabled('markdown-plus');
+            self::fail('unknown engine was accepted');
+        } catch (\InvalidArgumentException $e) {
+            self::assertStringContainsString('markdown-plus', $e->getMessage());
+        }
     }
 }

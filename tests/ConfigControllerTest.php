@@ -5,7 +5,6 @@ namespace OCA\ReadmeMD\Tests;
 
 use OCA\ReadmeMD\Controller\ConfigController;
 use OCA\ReadmeMD\Services\Config;
-use OCP\AppFramework\Controller;
 use OCP\IConfig;
 use OCP\IRequest;
 use PHPUnit\Framework\TestCase;
@@ -20,8 +19,10 @@ class ConfigControllerTest extends TestCase
     /** @var array<string, string> */
     private array $values = [];
 
-    public function setUp(): void
+    /** @param array<string, string> $values */
+    private function newController(array $values = []): ConfigController
     {
+        $this->values = $values;
         $configMock = $this->createMock(IConfig::class);
         $configMock->method('getAppValue')->willReturnCallback(
             function (string $appName, string $key, ?string $default = null): ?string {
@@ -38,6 +39,8 @@ class ConfigControllerTest extends TestCase
             $this->createMock(IRequest::class),
             new Config($configMock, 'files_readmemd')
         );
+
+        return $this->controller;
     }
 
     public function testGetConfig(): void
@@ -51,30 +54,48 @@ class ConfigControllerTest extends TestCase
             'disable_workspace' => 'true',
             'fileslist_header' => ['HEADER'],
             'fileslist_footer' => ['README'],
-        ], $this->controller->getConfig());
+        ], $this->newController()->getConfig());
     }
 
     public function testSetConfig(): void
     {
-        self::assertSame('true', $this->controller->setConfig('show_html', 'true'));
-        self::assertSame('true', $this->controller->getConfig()['show_html']);
+        $controller = $this->newController();
+        self::assertSame('true', $controller->setConfig('show_html', 'true'));
+        self::assertSame('true', $controller->getConfig()['show_html']);
+    }
+
+    public function testSetConfigNormalizesLegacyBoolean(): void
+    {
+        $controller = $this->newController();
+        self::assertSame('true', $controller->setConfig('show_html', '1'));
+        self::assertSame('true', $this->values['show_html']);
+        self::assertSame('true', $controller->getConfig()['show_html']);
+    }
+
+    public function testSetConfigRejectsUnknownKey(): void
+    {
+        $controller = $this->newController();
+        $this->expectException(\InvalidArgumentException::class);
+        $controller->setConfig('not_a_setting', 'true');
     }
 
     public function testAddAndRemoveFileName(): void
     {
-        $this->controller->addFileName('README.md', 'header');
-        self::assertSame(['HEADER', 'README.md'], $this->controller->getConfig()['fileslist_header']);
+        $controller = $this->newController();
+        $controller->addFileName('README.md', 'header');
+        self::assertSame(['HEADER', 'README.md'], $controller->getConfig()['fileslist_header']);
 
-        $this->controller->removeFileName('HEADER', 'header');
-        self::assertSame(['README.md'], $this->controller->getConfig()['fileslist_header']);
+        $controller->removeFileName('HEADER', 'header');
+        self::assertSame(['README.md'], $controller->getConfig()['fileslist_header']);
     }
 
     public function testAddAndRemoveFooterFileName(): void
     {
-        $this->controller->addFileName('FOOTER', 'footer');
-        self::assertSame(['README', 'FOOTER'], $this->controller->getConfig()['fileslist_footer']);
+        $controller = $this->newController();
+        $controller->addFileName('FOOTER', 'footer');
+        self::assertSame(['README', 'FOOTER'], $controller->getConfig()['fileslist_footer']);
 
-        $this->controller->removeFileName('FOOTER', 'footer');
-        self::assertSame(['README'], $this->controller->getConfig()['fileslist_footer']);
+        $controller->removeFileName('FOOTER', 'footer');
+        self::assertSame(['README'], $controller->getConfig()['fileslist_footer']);
     }
 }

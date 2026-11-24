@@ -62,12 +62,9 @@ class Engine implements ISettings {
      */
     public function getForm() {
 
-        $show_asciidoc = $this->config->getAppValue('show_asciidoc') ; 
-            $show_html = $this->config->getAppValue('show_html')     ;
-
         $parameters = [
-            'show_asciidoc' => $show_asciidoc,
-            'show_html' => $show_html
+            'show_asciidoc' => $this->config->isEngineEnabled('asciidoc'),
+            'show_html' => $this->config->isEngineEnabled('html'),
         ];
 
         return new TemplateResponse('files_readmemd', 'Engine', $parameters);
