@@ -18,9 +18,9 @@ export default {
 			type: String,
 			default: '',
 		},
-		mode: {
-			type: String,
-			default: 'private',
+		fileListAdapter: {
+			type: Object,
+			required: true,
 		},
 	},
 
@@ -41,7 +41,7 @@ export default {
 		logger.debug('AsciiDoc engine loaded')
 
 		// now choose the right CSS
-		if (this.mode === 'private') {
+		if (this.fileListAdapter.mode === 'private') {
 			if (document.body.dataset.themes.startsWith('dark')) {
 				import('github-markdown-css/github-markdown-dark.css')
 			}

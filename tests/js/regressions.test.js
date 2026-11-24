@@ -22,11 +22,9 @@ describe('frontend regressions found during live verification', () => {
     expect(markdown).toContain('created()')
   })
 
-  it('declares and passes the mode prop used by the asciidoc engine', () => {
-    const asciidoc = src('components/AsciidocEngine.vue')
-    expect(asciidoc).toMatch(/props:\s*\{[\s\S]*\bmode\s*:/)
-
+  it('keeps mode detection and Nextcloud URLs out of the view', () => {
     const readmemd = src('view/Readmemd.vue')
-    expect(readmemd).toMatch(/<AsciidocEngine[\s\S]*?:mode="mode"/)
+    expect(readmemd).not.toMatch(/getElementById\('isPublic'\)|sharingToken|linkToRemoteBase|generateUrl/)
+    expect(readmemd).toContain(':file-list-adapter="fileListAdapter"')
   })
 })

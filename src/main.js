@@ -3,8 +3,8 @@
  *
  * @license AGPL-3.0-or-later
  *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU Affero General Public License as
  * published by the Free Software Foundation, either version 3 of the
  * License, or (at your option) any later version.
  *
@@ -17,15 +17,13 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-import Vue from 'vue'
 import { registerFileListHeaders, Header } from '@nextcloud/files'
-import Readmemd from './view/Readmemd.vue'
 import logger from './logger.js'
-import { zone } from './zones.js'
+import { createPrivateAdapter } from './adapters/privateFiles.js'
+import { createMount } from './modules/mount.js'
 
-const ReadmemdView = Vue.extend(Readmemd)
-const HEADER = zone('headermd')
-const FOOTER = zone('footermd')
+const HEADER = 'headermd'
+const FOOTER = 'footermd'
 
 __webpack_nonce__ = btoa(OC.requestToken) 			 		 // eslint-disable-line
 __webpack_public_path__ = OC.linkTo('files_readmemd', 'js/') // eslint-disable-line
@@ -34,8 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 	logger.info('initializing ...')
 
-	let HeaderView
-	let FooterView
+	let mounts = []
 
 	// create Header object
 	const ReadmeMDHeader = new Header({
@@ -47,39 +44,30 @@ document.addEventListener('DOMContentLoaded', () => {
 		},
 
 		async render(el, folder, view) {
+			mounts.forEach((mount) => mount.destroy())
+			mounts = []
 
-			HeaderView = new ReadmemdView({
-				data: {
-					name: 'readmemd-' + HEADER.adminToken,
-					zone: HEADER.domClass,
-					fileTableView: view,
-					path: folder.path,
-				},
-			}).$mount(el)
-
-			let footerElement
-
-			if (!document.querySelector('.' + FOOTER.domClass)) {
-				footerElement = document.createElement('div')
-				document.querySelector('.files-list').after(footerElement)
-			} else {
-				footerElement = document.querySelector('.' + FOOTER.domClass)
-
-			}
-
-			FooterView = new ReadmemdView({
-				data: {
-					name: 'readmemd-' + FOOTER.adminToken,
-					zone: FOOTER.domClass,
-					fileTableView: view,
-					path: folder.path,
-				},
-			}).$mount(footerElement)
+			const adapt = (layout) => createPrivateAdapter(view, layout)
+			mounts.push(createMount({
+				zone: HEADER,
+				fileListAdapter: adapt({
+					parent: el,
+					position: 'append',
+				}),
+				path: folder.path,
+			}))
+			mounts.push(createMount({
+				zone: FOOTER,
+				fileListAdapter: adapt({
+					parent: () => document.querySelector('.files-list'),
+					position: 'after',
+				}),
+				path: folder.path,
+			}))
 		},
 
 		updated(folder, view) {
-			HeaderView.$data.path = folder.path
-			FooterView.$data.path = folder.path
+			mounts.forEach((mount) => mount.update(folder.path))
 		},
 	})
 

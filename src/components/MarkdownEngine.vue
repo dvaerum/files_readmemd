@@ -26,9 +26,9 @@ export default {
 			type: String,
 			default: '',
 		},
-		mode: {
-			type: String,
-			default: 'private',
+		fileListAdapter: {
+			type: Object,
+			required: true,
 		},
 		path: {
 			type: String,
@@ -71,17 +71,7 @@ export default {
 					if (link.startsWith('mailto:') || link.startsWith('http://') || link.startsWith('https://') || link.startsWith(generateUrl('core/preview'))) {
 						return link
 					} else {
-						if (this.mode === 'public') {
-							const token = document.getElementById('sharingToken').value
-							return generateUrl('/s/{token}/download?path={path}&files={file}', { token, path: this.path, file: link })
-						} else {
-							let dir
-							dir = this.path
-							if (link.startsWith('/')) {
-								dir = ''
-							}
-							return OC.linkToRemoteBase('files' + dir + '/' + link)
-						}
+						return this.fileListAdapter.linkUrl(link, this.path)
 					}
 				},
 			})
@@ -106,7 +96,7 @@ export default {
 		}
 
 		// now choose the right CSS
-		if (this.mode === 'private') {
+		if (this.fileListAdapter.mode === 'private') {
 			if (document.body.dataset.themes.startsWith('dark')) {
 				import('github-markdown-css/github-markdown-dark.css')
 			}

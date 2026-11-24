@@ -470,6 +470,30 @@ Both satisfy the same interface; tests inject a fake third adapter. The mount
 module owns node creation, node placement, polling only where the public
 adapter requires it, and path synchronization.
 
+Interface settled by the Design It Twice gate:
+
+- **Adapter surface:** `whenReady()`, `currentPath()`, `directoryNames(path)`,
+  `downloadUrl(fileName, path)`, `linkUrl(link, path)`, `footerContainer()`, a
+  `mode` string, `mountPoint(zoneDefinition)` and `onPathChange(callback)`
+  returning an unsubscribe function. `directoryNames` replaces the view's old
+  `getContents()` loop; `linkUrl` and `footerContainer` keep Markdown link
+  rewriting and footer layout inside adapters, so no view or engine component
+  reads share tokens, router URLs or `#isPublic`. The private adapter polls
+  nothing; the public adapter owns readiness and path-change intervals.
+- **Mount surface:** `createMount()` returns `{ update(path), destroy() }`.
+  Node creation is the mount module's job: an adapter's `mountPoint()` supplies
+  a parent, `append`/`after` position and an optional existing node; the mount
+  module reuses or creates the node and always keeps the Vue root as its node.
+- **View boundary:** `Readmemd.vue` receives `fileListAdapter` and a `path`. It
+  never reads `#isPublic`, `#sharingToken`, `OCA`, `OC` or Nextcloud URLs, and
+  never branches on mode. It asks the adapter for names and a download URL,
+  passes the adapter to engine components for link/theme decisions, and renders
+  the election result.
+- **Registration:** `main.js` creates one private adapter per render (the
+  header slot differs per render) and calls `update()` from `Header.updated`;
+  `public.js` creates one public adapter, awaits readiness, then creates both
+  mounts. The existing listener/bundle names stay untouched.
+
 ### Steps
 
 1. Extract a `fileListAdapter` interface from the two callers: names,

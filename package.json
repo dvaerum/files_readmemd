@@ -54,6 +54,7 @@
     "@nextcloud/eslint-plugin": "^2.2.1",
     "@nextcloud/stylelint-config": "^3.0.1",
     "@nextcloud/webpack-vue-config": "^6.1.0",
+    "jsdom": "^31.0.1",
     "vitest": "^5.1.1"
   },
   "browserslist": [

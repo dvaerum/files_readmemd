@@ -7,12 +7,12 @@
 	<div v-if="election !== null" :class="[ zone ]" :data-filename="election.fileName">
 		<MarkdownEngine v-if="election.engine === 'markdown'"
 			:content="content"
-			:mode="mode"
+			:file-list-adapter="fileListAdapter"
 			:path="path" />
 		<HtmlEngine v-if="election.engine === 'html'" :content="content" />
 		<AsciidocEngine v-if="election.engine === 'asciidoc'"
 			:content="content"
-			:mode="mode" />
+			:file-list-adapter="fileListAdapter" />
 	</div>
 </template>
 
@@ -21,7 +21,6 @@ import MarkdownEngine from '../components/MarkdownEngine.vue'
 import HtmlEngine from '../components/HtmlEngine.vue'
 import AsciidocEngine from '../components/AsciidocEngine.vue'
 import axios from '@nextcloud/axios'
-import { generateUrl } from '@nextcloud/router'
 import logger from '../logger.js'
 import { loadState } from '@nextcloud/initial-state'
 import { electForZone } from '../modules/fileElection.js'
@@ -38,11 +37,17 @@ export default {
 		AsciidocEngine,
 	},
 
+	props: {
+		fileListAdapter: {
+			type: Object,
+			required: true,
+		},
+	},
+
 	data() {
 		return {
 			config: loadState('files_readmemd', 'config'),
 			election: null,
-			fileTableView: {},
 			path: null,
 			content: null,
 		}
@@ -53,102 +58,57 @@ export default {
 			return zoneForDomClass(this.zone)
 		},
 
-		mode() {
-			const IS_PUBLIC = !!(document.getElementById('isPublic'))
-
-			if (IS_PUBLIC) {
-				return 'public'
-			} else {
-				return 'private'
-			}
-		},
-
 	},
 
 	watch: {
 		async path() {
-			this.content = await this.fillContent()
-			if (this.zone === FOOTER.domClass && this.content !== null) {
-				this.adjustCSS()
-			}
+			await this.refresh()
 		},
 	},
 
 	async mounted() {
-		this.content = await this.fillContent()
-		if (this.zone === FOOTER.domClass && this.content !== null) {
-			this.adjustCSS()
-		}
+		await this.refresh()
 	},
 
 	methods: {
-		adjustCSS() {
-
-			let container
-
-			if (this.mode === 'private') {
-				container = '.files-list'
-			} else {
-				container = '#files-public-content > #preview'
-			}
-			document.querySelector(container).style.setProperty('overflow', 'unset')
-			document.querySelector(container + ' > table > tbody').style.setProperty('min-height', 'unset')
-			document.querySelector(container + ' > table > tfoot').style.setProperty('min-height', 'unset')
-			document.querySelector(container + ' > table > tfoot').style.setProperty('height', '65px')
-			document.querySelector(container + ' > table > tfoot > tr').style.setProperty('height', '65px')
-		},
-
-		async directoryNames() {
-			if (this.mode === 'public') {
-				return OCA.Sharing.PublicApp.fileList.files
-					.filter((file) => file.type === 'file')
-					.map((file) => file.name)
-			}
-
-			const { contents } = await this.fileTableView.getContents(this.path)
-			return contents
-				.filter((file) => file.type === 'file')
-				.map((file) => file.basename)
-		},
-
-		async fillContent() {
+		async refresh() {
 			this.election = electForZone({
 				zone: this.zoneId,
 				config: this.config,
-				directoryNames: await this.directoryNames(),
+				directoryNames: await this.fileListAdapter.directoryNames(this.path),
 			})
 
 			if (this.election === null) {
 				logger.debug('[' + this.zone + '] No file elected for path ' + this.path)
-				return null
+				this.content = null
+				return
 			}
 
 			logger.debug('[' + this.zone + '] File elected: ' + this.election.fileName
 				+ ' (' + this.election.reason + ') for path ' + this.path)
-			return await this.getFile(this.election.fileName)
+			const url = this.fileListAdapter.downloadUrl(this.election.fileName, this.path)
+			const response = await axios.get(url)
+			this.content = response.data
+
+			if (this.zone === FOOTER.domClass && this.content !== null) {
+				this.adjustCSS()
+			}
 		},
 
-		async getFile(fileName) {
-			let URL
+		adjustCSS() {
+			const container = this.fileListAdapter.footerContainer()
+			if (!container) {
+				return
+			}
+			container.style.setProperty('overflow', 'unset')
 
-			if (this.mode === 'public') {
-				const token = document.getElementById('sharingToken').value
-
-				URL = generateUrl('/s/{token}/download?path={path}&files={file}',
-					{
-						token,
-						path: this.path,
-						file: fileName,
-					},
-				)
-			} else {
-				const dir = this.path.replace('?', '%3F')
-				const fname = fileName.replace('?', '%3F')
-				URL = OC.linkToRemoteBase('files' + dir + '/' + fname)
+			for (const element of container.querySelectorAll(':scope > table > tbody, :scope > table > tfoot')) {
+				element.style.setProperty('min-height', 'unset')
 			}
 
-			const response = await axios.get(URL)
-			return response.data
+			for (const element of container.querySelectorAll(':scope > table > tfoot, :scope > table > tfoot > tr')) {
+				element.style.setProperty('height', '65px')
+			}
 		},
 	},
 }
