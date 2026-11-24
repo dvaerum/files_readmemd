@@ -20,6 +20,7 @@ $files = [
     $ncRoot . '/lib/public/AppFramework/Http/FeaturePolicy.php',
     $ncRoot . '/lib/public/AppFramework/Http/TemplateResponse.php',
     $ncRoot . '/lib/public/Settings/ISettings.php',
+    $appRoot . '/lib/ZoneDefinition.php',
     $appRoot . '/lib/Services/Config.php',
     $appRoot . '/lib/Services/ConfigSnapshot.php',
     $appRoot . '/lib/Controller/ConfigController.php',

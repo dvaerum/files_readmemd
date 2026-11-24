@@ -4,13 +4,14 @@ declare(strict_types=1);
 namespace OCA\ReadmeMD\Services;
 
 use InvalidArgumentException;
+use OCA\ReadmeMD\ZoneDefinition;
 
 /**
  * Typed, immutable view of the app configuration.
  *
  * Defaults, wire encoding and decoding live here so every consumer reads the
  * same normalized values. The wire map remains string-valued as required by
- * ADR-0002.
+ * ADR-0002, and its zone entries come from the single zone declaration.
  */
 final class ConfigSnapshot
 {
@@ -36,11 +37,7 @@ final class ConfigSnapshot
         'html' => 'show_html',
     ];
 
-    /** @var array<string, string> */
-    private const ZONE_KEYS = [
-        'header' => 'fileslist_header',
-        'footer' => 'fileslist_footer',
-    ];
+    private ZoneDefinition $zones;
 
     /** @var array<string, bool> */
     private array $booleans = [];
@@ -49,8 +46,19 @@ final class ConfigSnapshot
     private array $lists = [];
 
     /** @param array<string, mixed> $rawValues */
-    public function __construct(array $rawValues)
+    public function __construct(array $rawValues, ?ZoneDefinition $zones = null)
     {
+        $this->zones = $zones ?? new ZoneDefinition();
+
+        foreach ($this->zones->ids() as $id) {
+            $key = $this->zones->field($id, 'configKey');
+            if (!array_key_exists($key, self::LIST_DEFAULTS)) {
+                throw new InvalidArgumentException(
+                    "no default base names for zone '$id' (config key '$key')"
+                );
+            }
+        }
+
         foreach (self::BOOLEAN_DEFAULTS as $key => $default) {
             $raw = $rawValues[$key] ?? null;
             $this->booleans[$key] = $raw === null
@@ -144,33 +152,24 @@ final class ConfigSnapshot
         return self::ENGINE_KEYS[$engine];
     }
 
-    public static function zoneKey(string $zone): string
+    public function zoneKey(string $adminToken): string
     {
-        if (!array_key_exists($zone, self::ZONE_KEYS)) {
-            throw new InvalidArgumentException("unknown zone '$zone'");
-        }
-
-        return self::ZONE_KEYS[$zone];
+        return $this->zones->field($this->zones->idForAdminToken($adminToken), 'configKey');
     }
 
-    public static function isKnownZone(string $zone): bool
+    public function isKnownZone(string $adminToken): bool
     {
-        return array_key_exists($zone, self::ZONE_KEYS);
+        return $this->zones->hasAdminToken($adminToken);
     }
 
-    public static function isZoneKey(string $key): bool
+    public function isZoneKey(string $key): bool
     {
-        return in_array($key, self::ZONE_KEYS, true);
+        return $this->zones->hasValue('configKey', $key);
     }
 
-    public static function zoneForKey(string $key): string
+    public function zoneForKey(string $key): string
     {
-        $zone = array_search($key, self::ZONE_KEYS, true);
-        if ($zone === false) {
-            throw new InvalidArgumentException("unknown zone config key '$key'");
-        }
-
-        return $zone;
+        return $this->zones->field($this->zones->idForConfigKey($key), 'adminToken');
     }
 
     public function booleanValue(string $key): bool
@@ -186,24 +185,29 @@ final class ConfigSnapshot
     }
 
     /** @return list<string> */
-    public function baseNamesForZone(string $zone): array
+    public function baseNamesForZone(string $adminToken): array
     {
-        return $this->lists[self::zoneKey($zone)];
+        return $this->lists[$this->zoneKey($adminToken)];
     }
 
     /** @return array<string, string|list<string>> */
     public function toWireArray(): array
     {
-        return [
+        $wire = [
             'show_asciidoc' => self::toWireBoolean($this->booleans['show_asciidoc']),
             'show_html' => self::toWireBoolean($this->booleans['show_html']),
             'yellow_back' => self::toWireBoolean($this->booleans['yellow_back']),
             'show_title' => self::toWireBoolean($this->booleans['show_title']),
             'auto_refresh' => self::toWireBoolean($this->booleans['auto_refresh']),
             'disable_workspace' => self::toWireBoolean($this->booleans['disable_workspace']),
-            'fileslist_header' => $this->lists['fileslist_header'],
-            'fileslist_footer' => $this->lists['fileslist_footer'],
         ];
+
+        foreach ($this->zones->ids() as $id) {
+            $key = $this->zones->field($id, 'configKey');
+            $wire[$key] = $this->lists[$key];
+        }
+
+        return $wire;
     }
 
     private static function assertBooleanKey(string $key): void

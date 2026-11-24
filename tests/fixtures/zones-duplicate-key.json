@@ -1,0 +1,14 @@
+{
+  "headermd": {
+    "adminToken": "header",
+    "configKey": "fileslist_header",
+    "domClass": "headermd",
+    "endpointSegment": "header"
+  },
+  "footermd": {
+    "adminToken": "footer",
+    "configKey": "fileslist_header",
+    "domClass": "footermd",
+    "endpointSegment": "footer"
+  }
+}

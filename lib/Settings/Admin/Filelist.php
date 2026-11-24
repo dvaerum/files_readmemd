@@ -62,10 +62,15 @@ class Filelist implements ISettings {
      */
     public function getForm() {
 
-        $parameters = [
-            'fileslist_header' => $this->config->zoneBaseNames('header'),
-            'fileslist_footer' => $this->config->zoneBaseNames('footer'),
-        ] ;
+        $zones = $this->config->zones();
+        $parameters = ['zones' => []];
+        foreach ($zones->ids() as $id) {
+            $adminToken = $zones->field($id, 'adminToken');
+            $parameters['zones'][$id] = array_merge(
+                $zones->get($id),
+                ['baseNames' => $this->config->zoneBaseNames($adminToken)]
+            );
+        }
 
         return new TemplateResponse('files_readmemd', 'Filelist', $parameters);
     }

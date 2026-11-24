@@ -307,6 +307,26 @@ One declaration, `zones.json`, consumed by PHP, webpack and CI:
 `src/config.js` imports it for admin actions; `ci/tests/zones.js` imports the
 same file for selectors. Exhaustive mapping replaces the binary fallback.
 
+Interface settled by the Design It Twice gate:
+
+- **Declaration shape:** the four fields above are the whole declaration. The
+  object key (`headermd` / `footermd`) is the canonical zone id. Default base
+  names stay in `ConfigSnapshot` because they are configuration values, not
+  vocabulary; adding a zone still needs its default added there.
+- **One config seam:** Phase 2's callers keep passing admin tokens. PHP's
+  `ZoneDefinition` and JS's `zones.js` both expose `zone(id)`, `ids()` and
+  reverse lookups for each field, and both fail loudly on an unknown id or a
+  duplicated field value. `ConfigSnapshot` builds its zone-to-config-key map
+  and the wire map's zone entries from `ZoneDefinition`.
+- **One rendering seam:** `main.js`, `public.js` and `Readmemd.vue` ask for a
+  zone by canonical id and read its `domClass`; they never compare against a
+  literal `headermd` / `footermd`. Nextcloud's own `.filelist-header` and
+  `.filelist-footer` mount points stay literal because they are core selectors,
+  not app vocabulary.
+- **One CI seam:** `ci/tests/zones.js` derives both `data-zone` link selectors
+  (admin token) and zone element selectors (`domClass`) from the declaration.
+  Baselines stay byte-identical.
+
 ### Steps
 
 1. Create `zones.json` and the PHP loader with validation: every zone must

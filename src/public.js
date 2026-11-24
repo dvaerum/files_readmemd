@@ -6,8 +6,11 @@
 import Vue from 'vue'
 import Readmemd from './view/Readmemd.vue'
 import logger from './logger.js'
+import { zone } from './zones.js'
 
 const ReadmemdView = Vue.extend(Readmemd)
+const HEADER = zone('headermd')
+const FOOTER = zone('footermd')
 
 __webpack_nonce__ = btoa(OC.requestToken) 			 		 // eslint-disable-line
 __webpack_public_path__ = OC.linkTo('files_readmemd', 'js/') // eslint-disable-line
@@ -35,36 +38,36 @@ document.addEventListener('DOMContentLoaded', () => {
 		}
 
 		let headerElement
-		if (!document.querySelector('.headermd')) {
+		if (!document.querySelector('.' + HEADER.domClass)) {
 			headerElement = document.createElement('div')
 			document.querySelector('.filelist-header').append(headerElement)
 		} else {
-			headerElement = document.querySelector('.headermd')
+			headerElement = document.querySelector('.' + HEADER.domClass)
 
 		}
 
 		HeaderView = new ReadmemdView({
 			data: {
-				name: 'readmemd-header',
-				zone: 'headermd',
+				name: 'readmemd-' + HEADER.adminToken,
+				zone: HEADER.domClass,
 				path: folder.path,
 			},
 		})
 
 		let footerElement
 
-		if (!document.querySelector('.footermd')) {
+		if (!document.querySelector('.' + FOOTER.domClass)) {
 			footerElement = document.createElement('div')
 			document.querySelector('.filelist-footer').append(footerElement)
 		} else {
-			footerElement = document.querySelector('.footermd')
+			footerElement = document.querySelector('.' + FOOTER.domClass)
 
 		}
 
 		FooterView = new ReadmemdView({
 			data: {
-				name: 'readmemd-footer',
-				zone: 'footermd',
+				name: 'readmemd-' + FOOTER.adminToken,
+				zone: FOOTER.domClass,
 				path: folder.path,
 			},
 		})

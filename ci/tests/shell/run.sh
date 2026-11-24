@@ -139,6 +139,18 @@ printf 'ok build stamp tracks source\n'
 ensure_assets "$app" "$stamp_file" "$changed_stamp" >/dev/null
 assert_eq 'changed source rebuilt' 4 "$(wc -l < "$npm_log" | tr -d ' ')"
 
+printf '{"headermd":{}}\n' > "$app/zones.json"
+zones_stamp=$(ci_build_stamp "$app")
+if [ "$zones_stamp" = "$changed_stamp" ]; then
+	ci_fail 'build stamp did not change with zone declaration'
+fi
+printf 'ok build stamp tracks zone declaration\n'
+
+ci_dir_copy="$tmp/ci-zones"
+mkdir -p "$ci_dir_copy"
+sync_zone_declaration "$app" "$ci_dir_copy"
+assert_eq 'zone declaration synced to CI harness' '{"headermd":{}}' "$(cat "$ci_dir_copy/zones.json")"
+
 playwright_dir="$tmp/playwright"
 mkdir -p "$playwright_dir"
 : > "$npm_log"

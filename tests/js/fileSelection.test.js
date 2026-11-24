@@ -60,6 +60,10 @@ describe('fileNamesForZone', () => {
     expect(fileNamesForZone('footermd', two)).toHaveLength(8)
     expect(fileNamesForZone('footermd', two)).toContain('FOOTER.md')
   })
+
+  it('rejects an unknown zone instead of falling back to the header', () => {
+    expect(() => fileNamesForZone('sidermd', config)).toThrow(/unknown zone.*sidermd/)
+  })
 })
 
 // The election loop in Readmemd.vue lets the last matching candidate win.

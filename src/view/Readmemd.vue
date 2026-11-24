@@ -25,6 +25,9 @@ import { generateUrl } from '@nextcloud/router'
 import logger from '../logger.js'
 import { loadState } from '@nextcloud/initial-state'
 import { engineType, fileNamesForZone } from '../utils/fileSelection.js'
+import { zone } from '../zones.js'
+
+const FOOTER = zone('footermd')
 
 export default {
 	name: 'Readmemd',
@@ -69,7 +72,7 @@ export default {
 	watch: {
 		async path() {
 			this.content = await this.fillContent()
-			if (this.zone === 'footermd' && this.content !== null) {
+			if (this.zone === FOOTER.domClass && this.content !== null) {
 				this.adjustCSS()
 			}
 		},
@@ -77,7 +80,7 @@ export default {
 
 	async mounted() {
 		this.content = await this.fillContent()
-		if (this.zone === 'footermd' && this.content !== null) {
+		if (this.zone === FOOTER.domClass && this.content !== null) {
 			this.adjustCSS()
 		}
 	},

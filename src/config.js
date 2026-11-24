@@ -21,6 +21,7 @@
 import { generateUrl } from '@nextcloud/router'
 import axios from '@nextcloud/axios'
 import logger from './logger.js'
+import { zone, zoneIds } from './zones.js'
 
 document.addEventListener('DOMContentLoaded', () => {
 
@@ -64,11 +65,15 @@ document.addEventListener('DOMContentLoaded', () => {
 			})
 	}
 
-	// Fileslists
+	// Fileslists — one handler per declared zone, no duplicated spellings.
 
-	// DELETE — delegate on the list so entries added after load get a handler too.
-	for (const zone of ['header', 'footer']) {
-		document.getElementById('readmeMD-filelist_' + zone).addEventListener('click', function(Event) {
+	for (const id of zoneIds()) {
+		const { adminToken, endpointSegment } = zone(id)
+		const listId = 'readmeMD-filelist_' + adminToken
+		const urlFor = (fn) => 'apps/files_readmemd/config/filenames/' + endpointSegment + '/' + fn.replace('?', '%3F')
+
+		// DELETE — delegate on the list so entries added after load get a handler too.
+		document.getElementById(listId).addEventListener('click', function(Event) {
 			const button = Event.target.closest('.readmeMD-filelist_delete')
 			if (!button) {
 				return
@@ -76,44 +81,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
 			const fn = button.dataset.filename
 
-			axios.delete(generateUrl('apps/files_readmemd/config/filenames/' + zone + '/' + fn.replace('?', '%3F')))
+			axios.delete(generateUrl(urlFor(fn)))
 				.then(function() {
 					button.parentNode.remove()
 				})
 				.catch(function(error) {
-					logger.error('Failed to remove ' + fn + ' from ' + zone, error)
+					logger.error('Failed to remove ' + fn + ' from ' + adminToken, error)
 				})
 		})
-	}
 
-	// ADD
+		// ADD
+		document.getElementById('readmeMD-filelist_submit-' + adminToken).onclick = function() {
+			const fn = document.getElementById('readmeMD-filelist_name-' + adminToken).value
 
-	document.getElementById('readmeMD-filelist_submit-footer').onclick = function(Event) {
-
-		const fn = document.getElementById('readmeMD-filelist_name-footer').value
-		const zone = 'footer'
-
-		axios.put(generateUrl('apps/files_readmemd/config/filenames/' + zone + '/' + fn.replace('?', '%3F')))
-			.then(function(data) {
-				document.getElementById('readmeMD-filelist_footer').insertAdjacentHTML('beforeend',
-					'<li class="readmeMD-filelist" id="readmeMD-filelist-' + fn + '">'
-                    + '<a data-zone="footer" data-filename="' + fn + '" class="readmeMD-filelist_delete icon-inline icon icon-delete"></a>'
-                    + fn + '</li>')
-			})
-	}
-
-	document.getElementById('readmeMD-filelist_submit-header').onclick = function(Event) {
-
-		const fn = document.getElementById('readmeMD-filelist_name-header').value
-		const zone = 'header'
-
-		axios.put(generateUrl('apps/files_readmemd/config/filenames/' + zone + '/' + fn.replace('?', '%3F')))
-			.then(function(data) {
-				document.getElementById('readmeMD-filelist_header').insertAdjacentHTML('beforeend',
-					'<li class="readmeMD-filelist" id="readmeMD-filelist-' + fn + '">'
-                    + '<a data-zone="header" data-filename="' + fn + '" class="readmeMD-filelist_delete icon-inline icon icon-delete"></a>'
-                    + fn + '</li>')
-			})
+			axios.put(generateUrl(urlFor(fn)))
+				.then(function() {
+					document.getElementById(listId).insertAdjacentHTML('beforeend',
+						'<li class="readmeMD-filelist" id="readmeMD-filelist-' + fn + '">'
+                         + '<a data-zone="' + adminToken + '" data-filename="' + fn + '" class="readmeMD-filelist_delete icon-inline icon icon-delete"></a>'
+                         + fn + '</li>')
+				})
+		}
 	}
 
 })

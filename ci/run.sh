@@ -60,6 +60,7 @@ cleanup() {
 trap cleanup EXIT
 
 setup_cmd() {
+	sync_zone_declaration "$APP_DIR" "$CI_DIR"
 	ensure_assets "$APP_DIR" "$STAMP_FILE" "$BUILD_STAMP"
 	ensure_playwright "$CI_DIR"
 }

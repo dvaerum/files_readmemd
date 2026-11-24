@@ -37,40 +37,44 @@ style("files_readmemd","admin") ;
 		<?php p($l->t("Enter basename without file extensions :")) ;?>
 	</p>
 
-	<h3 id="readmeMD-filelist_create-header"><?php p($l->t('HEADER base filenames : ')); ?></h3>
+	<?php $headerZone = $_['zones']['headermd']; ?>
 
-	<ul id=readmeMD-filelist_header>
+	<h3 id="readmeMD-filelist_create-<?php p($headerZone['adminToken']); ?>"><?php p($l->t('HEADER base filenames : ')); ?></h3>
+
+	<ul id=readmeMD-filelist_<?php p($headerZone['adminToken']); ?>>
 	<?php
-		foreach($_["fileslist_header"] as $HFN) { ?>
+		foreach($headerZone['baseNames'] as $HFN) { ?>
 			<li class="readmeMD-filelist" id="readmeMD-filelist-<?php p($HFN); ?>">
-			<a data-zone="header" data-filename="<?php p($HFN); ?>" class="readmeMD-filelist_delete icon-inline icon icon-delete"></a><?php p($HFN); ?>
+			<a data-zone="<?php p($headerZone['adminToken']); ?>" data-filename="<?php p($HFN); ?>" class="readmeMD-filelist_delete icon-inline icon icon-delete"></a><?php p($HFN); ?>
 			</li>
 		<?php } ;
 	?>
 	</ul>
 
-	<div class="readmeMD-filelist-input-header">
-		<input type="text" id="readmeMD-filelist_name-header" name="readmeMD-filelist_name-header" placeholder="<?php p($l->t('HEADER base Name')); ?>">
+	<div class="readmeMD-filelist-input-<?php p($headerZone['adminToken']); ?>">
+		<input type="text" id="readmeMD-filelist_name-<?php p($headerZone['adminToken']); ?>" name="readmeMD-filelist_name-<?php p($headerZone['adminToken']); ?>" placeholder="<?php p($l->t('HEADER base Name')); ?>">
 
-		<a id="readmeMD-filelist_submit-header" class="button"><span><?php p($l->t('Add')); ?></span></a>
+		<a id="readmeMD-filelist_submit-<?php p($headerZone['adminToken']); ?>" class="button"><span><?php p($l->t('Add')); ?></span></a>
 	</div>
 
-	<h3 id="readmeMD-filelist_create-footer"><?php p($l->t('FOOTER base filenames : ')); ?></h3>
+	<?php $footerZone = $_['zones']['footermd']; ?>
 
-	<ul id=readmeMD-filelist_footer>
+	<h3 id="readmeMD-filelist_create-<?php p($footerZone['adminToken']); ?>"><?php p($l->t('FOOTER base filenames : ')); ?></h3>
+
+	<ul id=readmeMD-filelist_<?php p($footerZone['adminToken']); ?>>
 	<?php
-		foreach($_["fileslist_footer"] as $FFN) { ?>
+		foreach($footerZone['baseNames'] as $FFN) { ?>
 			<li class="readmeMD-filelist" id="<?php p($FFN); ?>">
-				<a data-zone="footer" data-filename="<?php p($FFN); ?>" class="readmeMD-filelist_delete icon-inline icon icon-delete"></a><?php p($FFN); ?>
+				<a data-zone="<?php p($footerZone['adminToken']); ?>" data-filename="<?php p($FFN); ?>" class="readmeMD-filelist_delete icon-inline icon icon-delete"></a><?php p($FFN); ?>
 			</li>
 		<?php } ;
 	?>
 	</ul>
 
-	<div class="readmeMD-filelist-input-footer">
-		<input type="text" id="readmeMD-filelist_name-footer" name="readmeMD-filelist_name-footer" placeholder="<?php p($l->t('FOOTER Base Name')); ?>">
+	<div class="readmeMD-filelist-input-<?php p($footerZone['adminToken']); ?>">
+		<input type="text" id="readmeMD-filelist_name-<?php p($footerZone['adminToken']); ?>" name="readmeMD-filelist_name-<?php p($footerZone['adminToken']); ?>" placeholder="<?php p($l->t('FOOTER Base Name')); ?>">
 
-		<a id="readmeMD-filelist_submit-footer" class="button"><span><?php p($l->t('Add')); ?></span></a>
+		<a id="readmeMD-filelist_submit-<?php p($footerZone['adminToken']); ?>" class="button"><span><?php p($l->t('Add')); ?></span></a>
 	</div>
 
 </form>

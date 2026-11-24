@@ -1,0 +1,8 @@
+{
+  "headermd": {
+    "adminToken": "header",
+    "configKey": "fileslist_header",
+    "domClass": "headermd",
+    "endpointSegment": ""
+  }
+}

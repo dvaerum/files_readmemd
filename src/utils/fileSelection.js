@@ -17,6 +17,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+import { zone } from '../zones.js'
+
 const ENGINE_EXTENSIONS = {
 	markdown: ['md', 'markdown'],
 	asciidoc: ['adoc', 'asciidoc'],
@@ -52,14 +54,12 @@ export function engineType(fileName, config) {
 /**
  * Build the file-name candidates for a header or footer zone, in priority order.
  *
- * @param {string} zone 'headermd' or 'footermd'
+ * @param {string} zoneId canonical zone id from zones.json
  * @param {object} config app config
  * @return {string[]} candidate file names
  */
-export function fileNamesForZone(zone, config) {
-	const baseNames = zone === 'footermd'
-		? config.fileslist_footer
-		: config.fileslist_header
+export function fileNamesForZone(zoneId, config) {
+	const baseNames = config[zone(zoneId).configKey]
 	const names = []
 
 	for (const base of baseNames) {

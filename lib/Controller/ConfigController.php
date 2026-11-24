@@ -23,7 +23,6 @@ namespace OCA\ReadmeMD\Controller ;
 
 use OCP\AppFramework\Controller  ;
 use OCA\ReadmeMD\Services\Config ;
-use OCA\ReadmeMD\Services\ConfigSnapshot;
 use OCP\IRequest;
 
 class ConfigController extends Controller {
@@ -52,14 +51,14 @@ class ConfigController extends Controller {
     }
 
     public function removeFileName($file, $zone) {
-        if (!ConfigSnapshot::isKnownZone((string) $zone)) {
+        if (!$this->config->isKnownZone((string) $zone)) {
             return null;
         }
         $this->config->removeZoneBaseName((string) $zone, (string) $file);
     }
 
     public function addFileName ($file, $zone) {
-        if (!ConfigSnapshot::isKnownZone((string) $zone)) {
+        if (!$this->config->isKnownZone((string) $zone)) {
             return null;
         }
         $this->config->addZoneBaseName((string) $zone, (string) $file);

@@ -6,6 +6,7 @@ const {
   appErrors,
   readAppConfig,
 } = require('./helpers')
+const ciZones = require('./zones')
 
 const state = process.env.CI_STATE || 'default'
 const FIXTURE_DIR = 'README-dev-fixtures'
@@ -19,8 +20,8 @@ test.describe(`files_readmemd visual matrix (${state})`, () => {
 
     await expect(page.locator('#readmeMD-engine-asciidoc')).not.toBeChecked()
     await expect(page.locator('#readmeMD-engine-html')).not.toBeChecked()
-    await expect(page.locator('a[data-zone="header"][data-filename="HEADER"]')).toBeVisible()
-    await expect(page.locator('a[data-zone="footer"][data-filename="README"]')).toBeVisible()
+    await expect(page.locator(ciZones.adminLinkSelector('headermd', 'HEADER'))).toBeVisible()
+    await expect(page.locator(ciZones.adminLinkSelector('footermd', 'README'))).toBeVisible()
 
     const config = await readAppConfig(page)
     expect(config).toMatchObject({
@@ -30,8 +31,8 @@ test.describe(`files_readmemd visual matrix (${state})`, () => {
       show_title: 'true',
       auto_refresh: 'false',
       disable_workspace: 'true',
-      fileslist_header: ['HEADER'],
-      fileslist_footer: ['README'],
+      [ciZones.configKey('headermd')]: ['HEADER'],
+      [ciZones.configKey('footermd')]: ['README'],
     })
 
     await expect(page.locator('#app-content')).toHaveScreenshot('settings-page.png')
@@ -43,8 +44,8 @@ test.describe(`files_readmemd visual matrix (${state})`, () => {
     await login(page)
     await openFiles(page, FIXTURE_DIR)
 
-    const header = page.locator('.headermd[data-filename="HEADER.md"] .markdown-body')
-    const footer = page.locator('.footermd[data-filename=".README.md"] .markdown-body')
+    const header = page.locator(ciZones.domSelector('headermd') + '[data-filename="HEADER.md"] .markdown-body')
+    const footer = page.locator(ciZones.domSelector('footermd') + '[data-filename=".README.md"] .markdown-body')
     await header.waitFor({ state: 'visible' })
     await footer.waitFor({ state: 'visible' })
     await expect(header.locator('h1')).toHaveText('Fixture HEADER')
@@ -60,7 +61,7 @@ test.describe(`files_readmemd visual matrix (${state})`, () => {
     await login(page)
     await openFiles(page, FIXTURE_DIR)
 
-    const footer = page.locator('.footermd[data-filename="FEATURES.md"] .markdown-body')
+    const footer = page.locator(ciZones.domSelector('footermd') + '[data-filename="FEATURES.md"] .markdown-body')
     await footer.waitFor({ state: 'visible' })
     await expect(footer).toContainText('Heading one')
 
@@ -80,15 +81,15 @@ test.describe(`files_readmemd visual matrix (${state})`, () => {
     await login(page)
     await openFiles(page, FIXTURE_DIR)
 
-    const header = page.locator('.headermd[data-filename="HEADER.adoc"] .paragraph strong')
-    const footer = page.locator('.footermd[data-filename="README.html"] .html-body')
+    const header = page.locator(ciZones.domSelector('headermd') + '[data-filename="HEADER.adoc"] .paragraph strong')
+    const footer = page.locator(ciZones.domSelector('footermd') + '[data-filename="README.html"] .html-body')
     await header.waitFor({ state: 'visible' })
     await footer.waitFor({ state: 'visible' })
     await expect(header).toHaveText('AsciiDoc')
     await expect(footer).toContainText('Fixture HTML footer')
 
-    await expect(page.locator('.headermd')).toHaveScreenshot('header-asciidoc.png')
-    await expect(page.locator('.footermd')).toHaveScreenshot('footer-html.png')
+    await expect(page.locator(ciZones.domSelector('headermd'))).toHaveScreenshot('header-asciidoc.png')
+    await expect(page.locator(ciZones.domSelector('footermd'))).toHaveScreenshot('footer-html.png')
     expect(appErrors(errors)).toEqual([])
   })
 
@@ -97,8 +98,8 @@ test.describe(`files_readmemd visual matrix (${state})`, () => {
     await login(page)
     await page.goto('/index.php/settings/admin/files_readmemd')
 
-    await expect(page.locator('a[data-zone="header"][data-filename="VISUALH"]')).toBeVisible()
-    await expect(page.locator('a[data-zone="footer"][data-filename="VISUALF"]')).toBeVisible()
+    await expect(page.locator(ciZones.adminLinkSelector('headermd', 'VISUALH'))).toBeVisible()
+    await expect(page.locator(ciZones.adminLinkSelector('footermd', 'VISUALF'))).toBeVisible()
 
     await expect(page.locator('#app-content')).toHaveScreenshot('settings-extra-names.png')
     expect(appErrors(errors)).toEqual([])
@@ -109,7 +110,7 @@ test.describe(`files_readmemd visual matrix (${state})`, () => {
     await login(page)
     await openFiles(page, `${FIXTURE_DIR}/subfolder`)
 
-    const footer = page.locator('.footermd[data-filename="README.md"] .markdown-body')
+    const footer = page.locator(ciZones.domSelector('footermd') + '[data-filename="README.md"] .markdown-body')
     await footer.waitFor({ state: 'visible' })
     await expect(footer.locator('h1')).toHaveText('Subfolder README')
     await expect(footer).toHaveScreenshot('footer-subfolder.png')
@@ -126,8 +127,8 @@ test.describe(`files_readmemd visual matrix (${state})`, () => {
     await page.locator('#isPublic').waitFor({ state: 'attached' })
     await expect(page.locator('#isPublic')).toHaveCount(1)
 
-    const header = page.locator('.headermd[data-filename="HEADER.md"] .markdown-body')
-    const footer = page.locator('.footermd[data-filename=".README.md"] .markdown-body')
+    const header = page.locator(ciZones.domSelector('headermd') + '[data-filename="HEADER.md"] .markdown-body')
+    const footer = page.locator(ciZones.domSelector('footermd') + '[data-filename=".README.md"] .markdown-body')
     await header.waitFor({ state: 'visible' })
     await footer.waitFor({ state: 'visible' })
 

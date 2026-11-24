@@ -22,6 +22,7 @@
 namespace OCA\ReadmeMD\Services ;
 
 use InvalidArgumentException;
+use OCA\ReadmeMD\ZoneDefinition;
 use OCP\IConfig;
 
 class Config {
@@ -30,10 +31,22 @@ class Config {
 
     private IConfig $config;
     private string $appName;
+    private ZoneDefinition $zones;
 
     public function __construct(IConfig $config, string $appName){
         $this->config = $config;
         $this->appName = $appName;
+        $this->zones = new ZoneDefinition();
+    }
+
+    public function isKnownZone(string $adminToken): bool
+    {
+        return $this->zones->hasAdminToken($adminToken);
+    }
+
+    public function zones(): ZoneDefinition
+    {
+        return $this->zones;
     }
 
     private function rawValue(string $key): ?string
@@ -52,15 +65,17 @@ class Config {
 
     public function snapshot(): ConfigSnapshot
     {
+        $keys = ['show_asciidoc', 'show_html', 'yellow_back', 'show_title', 'auto_refresh', 'disable_workspace'];
+        foreach ($this->zones->ids() as $id) {
+            $keys[] = $this->zones->field($id, 'configKey');
+        }
+
         $raw = [];
-        foreach (array_merge(
-            ['show_asciidoc', 'show_html', 'yellow_back', 'show_title', 'auto_refresh', 'disable_workspace'],
-            ['fileslist_header', 'fileslist_footer']
-        ) as $key) {
+        foreach ($keys as $key) {
             $raw[$key] = $this->rawValue($key);
         }
 
-        return new ConfigSnapshot($raw);
+        return new ConfigSnapshot($raw, $this->zones);
     }
 
     public function isEngineEnabled(string $engine): bool
@@ -90,7 +105,8 @@ class Config {
     /** @param list<string> $names */
     public function setZoneBaseNames(string $zone, array $names): void
     {
-        $this->store(ConfigSnapshot::zoneKey($zone), ConfigSnapshot::encodeBaseNames($names));
+        $key = $this->zones->field($this->zones->idForAdminToken($zone), 'configKey');
+        $this->store($key, ConfigSnapshot::encodeBaseNames($names));
     }
 
     public function addZoneBaseName(string $zone, string $name): void
@@ -121,8 +137,8 @@ class Config {
             return;
         }
 
-        if (ConfigSnapshot::isZoneKey($key)) {
-            $zone = ConfigSnapshot::zoneForKey($key);
+        if ($this->zones->hasValue('configKey', $key)) {
+            $zone = $this->zones->field($this->zones->idForConfigKey($key), 'adminToken');
             $this->setZoneBaseNames($zone, ConfigSnapshot::parseBaseNames($value, $this->zoneBaseNames($zone)));
             return;
         }
