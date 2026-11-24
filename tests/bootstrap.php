@@ -2,13 +2,29 @@
 declare(strict_types=1);
 
 // Bootstrap for the unit tests. The php:apache image has no composer vendor
-// dir — load the Nextcloud server's public interfaces and the app classes
-// directly.
-require_once '/var/www/html/lib/public/IConfig.php';
-require_once '/var/www/html/lib/public/IRequest.php';
-require_once '/var/www/html/lib/public/IL10N.php';
-require_once '/var/www/html/lib/public/AppFramework/Controller.php';
-require_once '/var/www/html/lib/public/Settings/ISettings.php';
-require_once '/var/www/html/custom_apps/files_readmemd/lib/Services/Config.php';
-require_once '/var/www/html/custom_apps/files_readmemd/lib/Controller/ConfigController.php';
-require_once '/var/www/html/custom_apps/files_readmemd/lib/Settings/Admin/Engine.php';
+// dir, so the server's public interfaces and the app classes are loaded
+// directly. Paths are overridable so the same tests run outside that container.
+$ncRoot = getenv('NEXTCLOUD_ROOT') ?: '/var/www/html';
+$appRoot = getenv('APP_ROOT') ?: $ncRoot . '/custom_apps/files_readmemd';
+
+$files = [
+    $ncRoot . '/lib/public/IConfig.php',
+    $ncRoot . '/lib/public/IRequest.php',
+    $ncRoot . '/lib/public/IL10N.php',
+    $ncRoot . '/lib/public/AppFramework/Controller.php',
+    $ncRoot . '/lib/public/Settings/ISettings.php',
+    $appRoot . '/lib/Services/Config.php',
+    $appRoot . '/lib/Controller/ConfigController.php',
+    $appRoot . '/lib/Settings/Admin/Engine.php',
+];
+
+foreach ($files as $file) {
+    if (!is_file($file)) {
+        fwrite(STDERR, "tests/bootstrap.php: missing $file (set NEXTCLOUD_ROOT and APP_ROOT)\n");
+        exit(1);
+    }
+}
+
+foreach ($files as $file) {
+    require_once $file;
+}
