@@ -86,7 +86,7 @@ services:
       NEXTCLOUD_VERSION: ${NEXTCLOUD_VERSION:-29-apache}
       CI_STATE: ${CI_STATE:-default}
       SHARE_TOKEN: ${SHARE_TOKEN:-}
-      UPDATE_SNAPSHOTS: ${UPDATE_SNAPSHOTS:-0}
+      UPDATE_BASELINES: ${UPDATE_BASELINES:-0}
     volumes:
       - .:/work
     depends_on:

@@ -28,8 +28,18 @@ Run from this directory (or use `scripts/ci.sh` from the workspace root):
 ./run.sh full       # full visual matrix on NC 29
 ./run.sh compat     # smoke on NC 33/34/35 (app must not load)
 ./run.sh negative   # unpatched app must be rejected by NC 35
-./run.sh all        # all of the above
+./run.sh all        # setup + all three profiles
+./run.sh down       # remove both project stacks, even in a fresh shell
+./run.sh shell-test # config and lifecycle tests with a fake docker compose
 ```
+
+`run.sh` is a thin dispatcher. `lib/config.sh` is the single profile-config
+seam; `lib/lifecycle.sh` owns stack commands; `lib/setup.sh` installs
+dependencies. Assets rebuild only when the hash of `src/**`, `package.json`,
+`package-lock.json` or `webpack.js` changes (cached in `ci/.build-stamp`).
+`UPDATE_BASELINES=1` is the only switch that updates PNGs. Cleanup removes the
+stacks at exit unless `KEEP_STACK=1`; `all` still frees the full profile's port
+before the compatibility run and leaves the final stacks to cleanup.
 
 ## States
 
@@ -60,7 +70,7 @@ Review the PNG diffs like code before committing them.
 
 ## Troubleshooting
 
-- `KEEP_STACK=1 ./run.sh full` leaves the stack up; use `./run.sh down` to
+- `KEEP_STACK=1 ./run.sh negative` leaves the stack up; use `./run.sh down` to
   remove it and its volumes.
 - Playwright HTML reports land in `ci/playwright-report`, traces in
   `ci/test-results` (both uploaded by the workflow).
