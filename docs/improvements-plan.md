@@ -386,6 +386,24 @@ The implementation hides the extension table, candidate generation, engine
 gating, priority order and tie-break. `engineType` and `fileNamesForZone`
 remain internal seams for the module's own tests, not part of its interface.
 
+Interface settled by the Design It Twice gate:
+
+- **Zone input:** `zone` is the canonical id from `zones.json`. The view derives
+  it from its DOM-class prop with `zoneForDomClass()`, so mount code keeps using
+  the declaration's `domClass` without knowing the election vocabulary.
+- **Directory input:** `directoryNames` are file names only; the adapters have
+  already dropped folders. The module never sees file objects or paths.
+- **Priority:** build every enabled candidate, then sort by the descending
+  tuple `(baseIndex, engineRank, hidden, extensionIndex)` and take the first
+  name present. `engineRank` is `html > asciidoc > markdown`; `hidden` is
+  `true > false`; the later extension in the table wins. This makes the old
+  "last match wins" loop order explicit and preserves every current winner.
+- **Result:** `reason` is a stable, human-readable explanation of the winning
+  variant, e.g. `hidden markdown variant of base 'README'`. It is for logs and
+  tests, never rendered to users.
+- **Boundary:** `src/modules/fileElection.js` is the only election module.
+  `src/utils/fileSelection.js` is deleted once its tests are replaced.
+
 ### Steps
 
 1. Write tests at the new interface before moving code:

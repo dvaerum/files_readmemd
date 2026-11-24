@@ -4,13 +4,13 @@
 -->
 
 <template>
-	<div v-if="fileName !== null && fileName!== undefined" :class="[ zone ]" :data-filename="fileName">
-		<MarkdownEngine v-if="engineType == 'markdown'"
+	<div v-if="election !== null" :class="[ zone ]" :data-filename="election.fileName">
+		<MarkdownEngine v-if="election.engine === 'markdown'"
 			:content="content"
 			:mode="mode"
 			:path="path" />
-		<HtmlEngine v-if="engineType == 'html'" :content="content" />
-		<AsciidocEngine v-if="engineType == 'asciidoc'"
+		<HtmlEngine v-if="election.engine === 'html'" :content="content" />
+		<AsciidocEngine v-if="election.engine === 'asciidoc'"
 			:content="content"
 			:mode="mode" />
 	</div>
@@ -24,8 +24,8 @@ import axios from '@nextcloud/axios'
 import { generateUrl } from '@nextcloud/router'
 import logger from '../logger.js'
 import { loadState } from '@nextcloud/initial-state'
-import { engineType, fileNamesForZone } from '../utils/fileSelection.js'
-import { zone } from '../zones.js'
+import { electForZone } from '../modules/fileElection.js'
+import { zone, zoneForDomClass } from '../zones.js'
 
 const FOOTER = zone('footermd')
 
@@ -41,7 +41,7 @@ export default {
 	data() {
 		return {
 			config: loadState('files_readmemd', 'config'),
-			fileName: null,
+			election: null,
 			fileTableView: {},
 			path: null,
 			content: null,
@@ -49,12 +49,8 @@ export default {
 	},
 
 	computed: {
-		engineType() {
-			return engineType(this.fileName, this.config)
-		},
-
-		fileList() {
-			return fileNamesForZone(this.zone, this.config)
+		zoneId() {
+			return zoneForDomClass(this.zone)
 		},
 
 		mode() {
@@ -102,48 +98,37 @@ export default {
 			document.querySelector(container + ' > table > tfoot > tr').style.setProperty('height', '65px')
 		},
 
+		async directoryNames() {
+			if (this.mode === 'public') {
+				return OCA.Sharing.PublicApp.fileList.files
+					.filter((file) => file.type === 'file')
+					.map((file) => file.name)
+			}
+
+			const { contents } = await this.fileTableView.getContents(this.path)
+			return contents
+				.filter((file) => file.type === 'file')
+				.map((file) => file.basename)
+		},
+
 		async fillContent() {
-			// find a file in current dir that match one from filelist above
-			this.fileName = null
-			this.fileName = await this.getElectedFileName()
-			logger.debug('[' + this.zone + '] File elected : ' + this.fileName + ' for path ' + this.path)
-			// if we've got a candidate then let's use it
-			if (this.fileName !== null && this.fileName !== undefined) {
-				logger.debug('[' + this.zone + '] File elected : ' + this.fileName + ' for path ' + this.path)
-				return await this.getFile()
-			} else {
-				logger.debug('[' + this.zone + '] No File elected : for path ' + this.path)
+			this.election = electForZone({
+				zone: this.zoneId,
+				config: this.config,
+				directoryNames: await this.directoryNames(),
+			})
+
+			if (this.election === null) {
+				logger.debug('[' + this.zone + '] No file elected for path ' + this.path)
 				return null
 			}
+
+			logger.debug('[' + this.zone + '] File elected: ' + this.election.fileName
+				+ ' (' + this.election.reason + ') for path ' + this.path)
+			return await this.getFile(this.election.fileName)
 		},
 
-		async getElectedFileName() {
-
-			let FL
-
-			if (this.mode === 'public') {
-				logger.debug('Mode public')
-				const contents = OCA.Sharing.PublicApp.fileList.files
-				FL = contents.map((file) => { if (file.type === 'file') { return file.name } else { return undefined } })
-			} else {
-				logger.debug('Mode private')
-				const { contents } = await this.fileTableView.getContents(this.path)
-				FL = contents.map((file) => { if (file.type === 'file') { return file.basename } else { return undefined } })
-			}
-
-			let result
-
-			for (const activFile in this.fileList) {
-				for (const filenum in FL) {
-					if (FL[filenum] === this.fileList[activFile]) {
-						result = FL[filenum]
-					}
-				}
-			}
-			return result
-		},
-
-		async getFile() {
+		async getFile(fileName) {
 			let URL
 
 			if (this.mode === 'public') {
@@ -153,12 +138,12 @@ export default {
 					{
 						token,
 						path: this.path,
-						file: this.fileName,
+						file: fileName,
 					},
 				)
 			} else {
 				const dir = this.path.replace('?', '%3F')
-				const fname = this.fileName.replace('?', '%3F')
+				const fname = fileName.replace('?', '%3F')
 				URL = OC.linkToRemoteBase('files' + dir + '/' + fname)
 			}
 
