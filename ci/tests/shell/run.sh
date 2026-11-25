@@ -73,14 +73,42 @@ assert_has "export UPDATE_BASELINES='0'" "$full_config" 'baseline default'
 assert_has "export SUPPORT_MIN='$support_min'" "$full_config" 'config exports declared minimum'
 assert_has "export SUPPORT_MAX='$support_max'" "$full_config" 'config exports declared maximum'
 
-boot_hook=$(cat "$CI_DIR/hooks/before-starting/10-enable-files-readmemd.sh")
-assert_has 'support-range.sh' "$boot_hook" 'boot hook sources the support parser'
-assert_has 'support_allows' "$boot_hook" 'boot hook asks the parser about enablement'
-assert_not_has '-gt 29' "$boot_hook" 'boot hook has no hard-coded version threshold'
+# The executable decision is the test surface. Boundary outcomes and the boot
+# hook's enable call are exercised through it, not by grepping call-site source.
+support="$CI_DIR/lib/support-range.sh"
+for version in "$support_min" "$support_max"; do
+	assert_eq "expectation enabled at $version" enabled \
+		"$(sh "$support" expectation --info "$app_info" --version "${version}-apache")"
+done
+for version in "$((support_min - 1))" "$((support_max + 1))"; do
+	assert_eq "expectation disabled at $version" disabled \
+		"$(sh "$support" expectation --info "$app_info" --version "${version}-apache")"
+done
 
-ci_run=$(cat "$CI_DIR/run.sh")
-assert_has 'support-range.sh' "$ci_run" 'CI runner sources the support parser'
-assert_has 'support_allows' "$ci_run" 'CI runner derives compatibility expectations'
+occ_log="$tmp/occ.log"
+: > "$occ_log"
+cat > "$bin/occ" <<'EOF'
+#!/bin/sh
+if [ "$1" = status ]; then
+	printf '{"version":"%s","versionstring":"%s"}\n' "$FAKE_NC_VERSION" "$FAKE_NC_VERSION"
+elif [ "$1" = app:enable ]; then
+	printf '%s\n' "$*" >> "$FAKE_OCC_LOG"
+fi
+EOF
+chmod +x "$bin/occ"
+export FAKE_OCC_LOG="$occ_log"
+
+FAKE_NC_VERSION="$support_min"
+export FAKE_NC_VERSION
+sh "$support" enable --app files_readmemd --info "$app_info" --occ "$bin/occ" >/dev/null
+assert_has 'app:enable files_readmemd' "$(cat "$occ_log")" 'boot decision enables a supported app'
+
+: > "$occ_log"
+FAKE_NC_VERSION="$((support_max + 1))"
+skip_output=$(sh "$support" enable --app files_readmemd --info "$app_info" --occ "$bin/occ")
+assert_eq 'boot decision skips an unsupported app' '' "$(cat "$occ_log")"
+assert_has 'Skipping files_readmemd' "$skip_output" 'boot decision prints the skip reason'
+unset FAKE_NC_VERSION
 
 app_readme=$(cat "$CI_DIR/../README.md")
 ci_readme=$(cat "$CI_DIR/README.md")
@@ -148,6 +176,25 @@ assert_has 'project=files_readmemd-ci args=compose -f' "$(cat "$docker_log")" 's
 assert_has '-p files_readmemd-ci down -v --remove-orphans' "$(cat "$docker_log")" 'stack_down arguments'
 assert_has 'volume rm files_readmemd-ci_db_29-apache' "$(cat "$docker_log")" 'stack_down removes own volumes'
 assert_not_has 'volume rm files_readmemd-ci-negative' "$(cat "$docker_log")" 'stack_down leaves other project volumes'
+
+# A stack must hand the same compose configuration to every later command in
+# its profile; otherwise Playwright recreates the app after readiness passed.
+cat > "$bin/curl" <<'EOF'
+#!/bin/sh
+exit 0
+EOF
+chmod +x "$bin/curl"
+app_source="$tmp/stack-app"
+mkdir -p "$app_source"
+stack_up "$CI_DIR/docker-compose.yml" files_readmemd-ci 8290 29-apache \
+	nextcloud:29-apache "$app_source" >/dev/null
+assert_eq 'stack_up keeps the app mount for later compose commands' \
+	"$app_source" "$APP_SOURCE"
+assert_eq 'stack_up keeps the version for later compose commands' \
+	'29-apache' "$NEXTCLOUD_VERSION"
+assert_eq 'stack_up keeps the host port for later compose commands' \
+	'8290' "$NEXTCLOUD_HOST_PORT"
+unset APP_SOURCE NEXTCLOUD_VERSION NEXTCLOUD_HOST_PORT NEXTCLOUD_IMAGE
 
 app="$tmp/app"
 mkdir -p "$app/src"

@@ -14,7 +14,6 @@ STAMP_FILE="$CI_DIR/.build-stamp"
 . "$CI_DIR/lib/config.sh"
 . "$CI_DIR/lib/lifecycle.sh"
 . "$CI_DIR/lib/setup.sh"
-. "$CI_DIR/lib/support-range.sh"
 
 fail() { ci_fail "$@"; }
 
@@ -192,13 +191,14 @@ compat_profile() {
 		upload_fixtures
 		apply_state default
 
-		major=$(support_version_major "$NEXTCLOUD_VERSION")
-		[ -n "$major" ] || fail "could not read a major version from $NEXTCLOUD_VERSION"
-		if support_allows "$major" "$APP_DIR/appinfo/info.xml"; then
-			CI_APP_EXPECTED=enabled
+		expected=$(sh "$CI_DIR/lib/support-range.sh" expectation \
+			--info "$APP_DIR/appinfo/info.xml" --version "$NEXTCLOUD_VERSION")
+		[ "$expected" = enabled ] || [ "$expected" = disabled ] ||
+			fail "could not read a compatibility expectation from $NEXTCLOUD_VERSION"
+		CI_APP_EXPECTED=$expected
+		if [ "$expected" = enabled ]; then
 			app_enabled || fail "app was not enabled by the boot hook on Nextcloud $version"
 		else
-			CI_APP_EXPECTED=disabled
 			if app_enabled; then
 				fail "app unexpectedly enabled on unsupported Nextcloud $version"
 			fi

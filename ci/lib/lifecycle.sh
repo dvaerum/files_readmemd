@@ -97,7 +97,11 @@ stack_up() {
 	version=$4
 	image=$5
 	app_source=$6
-	(
+	# Keep the stack configuration in the caller's environment: every later
+	# compose command in this profile must resolve the same app mount. A differing
+	# APP_SOURCE makes Playwright's `compose run` recreate the app, racing Apache
+	# readiness in the negative-control worktree.
+	{
 		export NEXTCLOUD_HOST_PORT="$port" NEXTCLOUD_VERSION="$version"
 		export NEXTCLOUD_IMAGE="$image" APP_SOURCE="$app_source"
 		echo "ci: starting $version on port $port"
@@ -106,5 +110,5 @@ stack_up() {
 		wait_for_pg "$compose_file" "$project"
 		ci_compose "$compose_file" "$project" up -d app
 		wait_for_nc "$port"
-	)
+	}
 }
