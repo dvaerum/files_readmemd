@@ -6,6 +6,7 @@ namespace OCA\ReadmeMD\Tests;
 use OCA\ReadmeMD\Controller\ConfigController;
 use OCA\ReadmeMD\Services\Config;
 use OCP\IConfig;
+use OCP\IL10N;
 use OCP\IRequest;
 use PHPUnit\Framework\TestCase;
 
@@ -37,7 +38,8 @@ class ConfigControllerTest extends TestCase
         $this->controller = new ConfigController(
             'files_readmemd',
             $this->createMock(IRequest::class),
-            new Config($configMock, 'files_readmemd')
+            new Config($configMock, 'files_readmemd'),
+            $this->createMock(IL10N::class)
         );
 
         return $this->controller;
@@ -82,7 +84,7 @@ class ConfigControllerTest extends TestCase
     public function testAddAndRemoveFileName(): void
     {
         $controller = $this->newController();
-        $controller->addFileName('README.md', 'header');
+        self::assertNull($controller->addFileName('README.md', 'header'));
         self::assertSame(['HEADER', 'README.md'], $controller->getConfig()['fileslist_header']);
 
         $controller->removeFileName('HEADER', 'header');
@@ -92,7 +94,7 @@ class ConfigControllerTest extends TestCase
     public function testAddAndRemoveFooterFileName(): void
     {
         $controller = $this->newController();
-        $controller->addFileName('FOOTER', 'footer');
+        self::assertSame('success', $controller->addFileName('FOOTER', 'footer'));
         self::assertSame(['README', 'FOOTER'], $controller->getConfig()['fileslist_footer']);
 
         $controller->removeFileName('FOOTER', 'footer');

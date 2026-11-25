@@ -14,15 +14,17 @@ import {
 import ciZones from '../../ci/tests/zones.js'
 
 describe('zone declaration', () => {
-  it('exposes both zones with all four spellings', () => {
+  it('exposes both zones with all four spellings and their response semantics', () => {
     expect(zoneIds()).toEqual(['headermd', 'footermd'])
     expect(zone('headermd')).toEqual({
       adminToken: 'header',
       configKey: 'fileslist_header',
       domClass: 'headermd',
       endpointSegment: 'header',
+      responseSemantics: 'silent',
     })
     expect(zone('footermd').configKey).toBe('fileslist_footer')
+    expect(zone('footermd').responseSemantics).toBe('success')
   })
 
   it('maps every field back to its zone', () => {
@@ -58,6 +60,7 @@ describe('zone declaration', () => {
         configKey: 'fileslist_header',
         domClass: 'headermd',
         endpointSegment: '',
+        responseSemantics: 'silent',
       },
     })).toThrow(/endpointSegment/)
     expect(() => validateDeclaration({
@@ -66,12 +69,23 @@ describe('zone declaration', () => {
         configKey: 'fileslist_header',
         domClass: 'headermd',
         endpointSegment: 'header',
+        responseSemantics: '',
+      },
+    })).toThrow(/responseSemantics/)
+    expect(() => validateDeclaration({
+      headermd: {
+        adminToken: 'header',
+        configKey: 'fileslist_header',
+        domClass: 'headermd',
+        endpointSegment: 'header',
+        responseSemantics: 'silent',
       },
       footermd: {
         adminToken: 'footer',
         configKey: 'fileslist_header',
         domClass: 'footermd',
         endpointSegment: 'footer',
+        responseSemantics: 'success',
       },
     })).toThrow(/fileslist_header/)
   })

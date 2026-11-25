@@ -3,6 +3,7 @@
     "adminToken": "header",
     "configKey": "fileslist_header",
     "domClass": "headermd",
-    "endpointSegment": "header"
+    "endpointSegment": "header",
+    "responseSemantics": "silent"
   }
 ]

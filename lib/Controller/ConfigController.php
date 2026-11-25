@@ -23,16 +23,24 @@ namespace OCA\ReadmeMD\Controller ;
 
 use OCP\AppFramework\Controller  ;
 use OCA\ReadmeMD\Services\Config ;
+use OCA\ReadmeMD\View\NextcloudZoneAdminRenderer;
+use OCA\ReadmeMD\View\ZoneAdminView;
 use OCP\IRequest;
+use OCP\IL10N;
 
 class ConfigController extends Controller {
 
     private Config $config;
+    private ZoneAdminView $adminView;
 
-    public function __construct($AppName, IRequest $request, Config $config ) {
+    public function __construct($AppName, IRequest $request, Config $config, IL10N $l) {
         parent::__construct($AppName, $request);
 
         $this->config = $config;
+        $this->adminView = new ZoneAdminView(
+            $config->snapshot(),
+            new NextcloudZoneAdminRenderer($l)
+        );
     }
 
     /**
@@ -63,9 +71,7 @@ class ConfigController extends Controller {
         }
         $this->config->addZoneBaseName((string) $zone, (string) $file);
 
-        if ($zone === 'footer') {
-            return 'success' ;
-        }
+        return $this->adminView->baseNameResponse((string) $zone);
     }
 
 }

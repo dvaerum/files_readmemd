@@ -27,7 +27,9 @@ class ZoneDefinitionTest extends TestCase
             'configKey' => 'fileslist_header',
             'domClass' => 'headermd',
             'endpointSegment' => 'header',
+            'responseSemantics' => 'silent',
         ], $zones->get('headermd'));
+        self::assertSame('success', $zones->field('footermd', 'responseSemantics'));
         self::assertSame('footer', $zones->field('footermd', 'adminToken'));
         self::assertSame('fileslist_footer', $zones->field('footermd', 'configKey'));
     }
@@ -85,6 +87,7 @@ class ZoneDefinitionTest extends TestCase
             'missing field' => ['zones-missing-field.json', 'endpointSegment'],
             'duplicate field value' => ['zones-duplicate-key.json', 'fileslist_header'],
             'empty field value' => ['zones-empty-field.json', 'endpointSegment'],
+            'empty response semantics' => ['zones-empty-response.json', 'responseSemantics'],
             'list instead of object' => ['zones-list.json', 'object'],
         ];
     }

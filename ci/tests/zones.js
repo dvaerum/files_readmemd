@@ -10,7 +10,7 @@ const source = path.resolve(__dirname, '../../zones.json')
 const copied = path.resolve(__dirname, '../zones.json')
 const declaration = require(fs.existsSync(source) ? source : copied)
 
-const FIELDS = ['adminToken', 'configKey', 'domClass', 'endpointSegment']
+const FIELDS = ['adminToken', 'configKey', 'domClass', 'endpointSegment', 'responseSemantics']
 
 function validate(candidate) {
   if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) {

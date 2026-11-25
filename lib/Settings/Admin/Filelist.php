@@ -24,6 +24,8 @@ namespace OCA\ReadmeMD\Settings\Admin ;
 use OCP\IL10N;
 use OCP\Settings\ISettings;
 use OCA\ReadmeMD\Services\Config ;
+use OCA\ReadmeMD\View\NextcloudZoneAdminRenderer;
+use OCA\ReadmeMD\View\ZoneAdminView;
 use OCP\AppFramework\Http\TemplateResponse;
 
 class Filelist implements ISettings {
@@ -62,17 +64,12 @@ class Filelist implements ISettings {
      */
     public function getForm() {
 
-        $zones = $this->config->zones();
-        $parameters = ['zones' => []];
-        foreach ($zones->ids() as $id) {
-            $adminToken = $zones->field($id, 'adminToken');
-            $parameters['zones'][$id] = array_merge(
-                $zones->get($id),
-                ['baseNames' => $this->config->zoneBaseNames($adminToken)]
-            );
-        }
+        $view = new ZoneAdminView(
+            $this->config->snapshot(),
+            new NextcloudZoneAdminRenderer($this->l)
+        );
 
-        return new TemplateResponse('files_readmemd', 'Filelist', $parameters);
+        return new TemplateResponse('files_readmemd', 'Filelist', ['view' => $view]);
     }
 
 }

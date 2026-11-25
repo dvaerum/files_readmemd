@@ -9,7 +9,7 @@
 
 import declaration from '../zones.json'
 
-const FIELDS = ['adminToken', 'configKey', 'domClass', 'endpointSegment']
+const FIELDS = ['adminToken', 'configKey', 'domClass', 'endpointSegment', 'responseSemantics']
 
 /**
  * Fail at module load if the declaration cannot be interpreted. Every reverse

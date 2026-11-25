@@ -184,6 +184,11 @@ final class ConfigSnapshot
         return $this->booleanValue(self::engineKey($engine));
     }
 
+    public function zones(): ZoneDefinition
+    {
+        return $this->zones;
+    }
+
     /** @return list<string> */
     public function baseNamesForZone(string $adminToken): array
     {

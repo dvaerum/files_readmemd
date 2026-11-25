@@ -17,7 +17,7 @@ use stdClass;
  */
 final class ZoneDefinition
 {
-    private const FIELDS = ['adminToken', 'configKey', 'domClass', 'endpointSegment'];
+    private const FIELDS = ['adminToken', 'configKey', 'domClass', 'endpointSegment', 'responseSemantics'];
 
     /** @var array<string, array<string, string>> */
     private array $zones = [];
