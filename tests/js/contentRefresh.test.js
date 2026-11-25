@@ -2,10 +2,9 @@ import { describe, expect, it, vi } from 'vitest'
 import { createContentRefresh } from '../../src/modules/contentRefresh.js'
 
 const config = {
-	show_asciidoc: 'false',
-	show_html: 'false',
-	fileslist_header: ['HEADER'],
-	fileslist_footer: ['README'],
+	engines: { markdown: true, asciidoc: false, html: false },
+	baseNames: { headermd: ['HEADER'], footermd: ['README'] },
+	flags: {},
 }
 
 function deferred() {

@@ -1,16 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import { electForZone } from '../../src/modules/fileElection.js'
 
-const config = {
-	show_asciidoc: 'false',
-	show_html: 'false',
-	fileslist_header: ['HEADER'],
-	fileslist_footer: ['README'],
-}
+const config = ({ engines = {}, baseNames = {} } = {}) => ({
+	engines: { markdown: true, asciidoc: false, html: false, ...engines },
+	baseNames: { headermd: ['HEADER'], footermd: ['README'], ...baseNames },
+	flags: {},
+})
 
 const elect = (zone, directoryNames, overrides = {}) => electForZone({
 	zone,
-	config: { ...config, ...overrides },
+	config: config(overrides),
 	directoryNames,
 })
 
@@ -37,7 +36,7 @@ describe('electForZone', () => {
 
 	it('lets a later configured base beat an earlier hidden variant', () => {
 		const names = ['README.md', '.README.md', 'FOOTER.md']
-		const result = elect('footermd', names, { fileslist_footer: ['README', 'FOOTER'] })
+		const result = elect('footermd', names, { baseNames: { footermd: ['README', 'FOOTER'] } })
 
 		expect(result.fileName).toBe('FOOTER.md')
 		expect(result.baseName).toBe('FOOTER')
@@ -46,10 +45,10 @@ describe('electForZone', () => {
 
 	it('elects only base names declared by each zone admin config', () => {
 		expect(elect('headermd', ['HEADER.md', 'NOTICE.md'], {
-			fileslist_header: ['NOTICE'],
+			baseNames: { headermd: ['NOTICE'] },
 		}).baseName).toBe('NOTICE')
 		expect(elect('footermd', ['README.md', 'LICENSE.md'], {
-			fileslist_footer: ['LICENSE'],
+			baseNames: { footermd: ['LICENSE'] },
 		}).baseName).toBe('LICENSE')
 	})
 
@@ -60,7 +59,7 @@ describe('electForZone', () => {
 
 	it('lets an enabled higher-ranked engine beat a hidden markdown variant', () => {
 		const result = elect('headermd', ['.HEADER.md', 'HEADER.adoc'], {
-			show_asciidoc: 'true',
+			engines: { asciidoc: true },
 		})
 
 		expect(result.fileName).toBe('HEADER.adoc')
@@ -70,16 +69,16 @@ describe('electForZone', () => {
 	it('breaks same-engine ties by the later extension in the table', () => {
 		expect(elect('footermd', ['README.md', 'README.markdown']).fileName).toBe('README.markdown')
 		expect(elect('headermd', ['HEADER.adoc', 'HEADER.asciidoc'], {
-			show_asciidoc: 'true',
+			engines: { asciidoc: true },
 		}).fileName).toBe('HEADER.asciidoc')
 		expect(elect('footermd', ['README.htm', 'README.html'], {
-			show_html: 'true',
+			engines: { html: true },
 		}).fileName).toBe('README.html')
 	})
 
 	it('lets a hidden variant beat a visible one for an optional engine too', () => {
 		expect(elect('footermd', ['README.html', '.README.html'], {
-			show_html: 'true',
+			engines: { html: true },
 		})).toEqual({
 			fileName: '.README.html',
 			engine: 'html',

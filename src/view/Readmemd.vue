@@ -24,6 +24,7 @@ import axios from '@nextcloud/axios'
 import logger from '../logger.js'
 import { loadState } from '@nextcloud/initial-state'
 import { createContentRefresh } from '../modules/contentRefresh.js'
+import { decodeConfig } from '../modules/configDecode.js'
 import { zone, zoneForDomClass } from '../zones.js'
 
 const FOOTER = zone('footermd')
@@ -46,7 +47,7 @@ export default {
 
 	data() {
 		return {
-			config: loadState('files_readmemd', 'config'),
+			config: decodeConfig(loadState('files_readmemd', 'config')),
 			election: null,
 			path: null,
 			content: null,

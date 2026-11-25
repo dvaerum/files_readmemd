@@ -16,7 +16,7 @@ import { electForZone } from './fileElection.js'
 /**
  * @param {object} options refresh dependencies
  * @param {string} options.zone canonical zone id
- * @param {object} options.config app config snapshot
+ * @param {object} options.config normalized app config
  * @param {object} options.adapter file-list adapter with names and download URLs
  * @param {Function} options.load loads content from a URL
  * @param {Function} options.onResult receives (election, content)

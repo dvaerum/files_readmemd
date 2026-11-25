@@ -11,7 +11,7 @@
  * answer. See docs/adr/0001-file-election-policy.md for the tie-break.
  */
 
-import { zone } from '../zones.js'
+import { hasZone } from '../zones.js'
 
 const ENGINE_EXTENSIONS = {
 	markdown: ['md', 'markdown'],
@@ -26,7 +26,7 @@ const ENGINE_RANK = { markdown: 1, asciidoc: 2, html: 3 }
  * Internal seam: pick the engine for a file name, honouring optional flags.
  *
  * @param {string} fileName file name including its extension
- * @param {object} config app config wire map
+ * @param {object} config normalized app config
  * @return {string} engine name or 'Unsupported Engine'
  */
 function engineType(fileName, config) {
@@ -40,7 +40,7 @@ function engineType(fileName, config) {
 		if (!ENGINE_EXTENSIONS[engine].includes(ext)) {
 			continue
 		}
-		if (engine === 'markdown' || config['show_' + engine] === 'true') {
+		if (config.engines[engine]) {
 			return engine
 		}
 	}
@@ -52,16 +52,16 @@ function engineType(fileName, config) {
  * Internal seam: every enabled candidate with its tie-break coordinates.
  *
  * @param {string} zoneId canonical zone id from zones.json
- * @param {object} config app config wire map
+ * @param {object} config normalized app config
  * @return {object[]} candidates in declaration order
  */
 function candidateFiles(zoneId, config) {
-	const baseNames = config[zone(zoneId).configKey]
+	const baseNames = config.baseNames[zoneId]
 	const candidates = []
 
 	baseNames.forEach((baseName, baseIndex) => {
 		for (const engine of ENGINE_ORDER) {
-			if (engine !== 'markdown' && config['show_' + engine] !== 'true') {
+			if (!config.engines[engine]) {
 				continue
 			}
 
@@ -115,6 +115,10 @@ function comparePriority(left, right) {
  * @return {object|null} elected file and why it won, or null when nothing matches
  */
 export function electForZone({ zone: zoneId, config, directoryNames }) {
+	if (!hasZone(zoneId)) {
+		throw new Error(`unknown zone '${zoneId}'`)
+	}
+
 	const present = new Set(directoryNames)
 	const winner = candidateFiles(zoneId, config)
 		.sort(comparePriority)
