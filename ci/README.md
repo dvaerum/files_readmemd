@@ -19,6 +19,13 @@ AI is involved.
 - **Version- and state-scoped baselines.** `ci/baselines/<nextcloud-version>/<state>/`.
   A missing baseline fails CI; update them deliberately with `UPDATE_BASELINES=1`.
 
+## Compatibility
+
+The app declares support for Nextcloud 28–35 in `appinfo/info.xml`. The boot
+hook, `lib/config.sh` and `tests/shell/run.sh` all read that declaration through
+`lib/support-range.sh`; the shell tests fail if the docs disagree with it. The
+visual matrix covers NC 29 for all states and NC 33/34/35 for the default state.
+
 ## Commands
 
 Run from this directory (or use `scripts/ci.sh` from the workspace root):
@@ -26,7 +33,7 @@ Run from this directory (or use `scripts/ci.sh` from the workspace root):
 ```sh
 ./run.sh setup      # app npm ci + webpack build, ci npm ci
 ./run.sh full       # full visual matrix on NC 29
-./run.sh compat     # smoke on NC 33/34/35 (app must not load)
+./run.sh compat     # render check on NC 33/34/35 where info.xml allows it
 ./run.sh negative   # unpatched app must be rejected by NC 35
 ./run.sh all        # setup + all three profiles
 ./run.sh down       # remove both project stacks, even in a fresh shell

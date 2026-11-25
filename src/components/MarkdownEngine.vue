@@ -70,6 +70,14 @@ export default {
 
 	},
 
+	async mounted() {
+		// The view can publish an election and its content in the same tick.
+		// A watcher alone would miss that initial value and leave an empty body.
+		if (this.content) {
+			this.renderedContent = await this.renderMD()
+		}
+	},
+
 	updated() {
 		this.forceCheckBox()
 	},

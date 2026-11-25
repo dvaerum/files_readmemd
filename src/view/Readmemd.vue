@@ -23,7 +23,7 @@ import AsciidocEngine from '../components/AsciidocEngine.vue'
 import axios from '@nextcloud/axios'
 import logger from '../logger.js'
 import { loadState } from '@nextcloud/initial-state'
-import { electForZone } from '../modules/fileElection.js'
+import { createContentRefresh } from '../modules/contentRefresh.js'
 import { zone, zoneForDomClass } from '../zones.js'
 
 const FOOTER = zone('footermd')
@@ -61,40 +61,44 @@ export default {
 	},
 
 	watch: {
-		async path() {
-			await this.refresh()
+		path(newPath) {
+			this.refresh(newPath)
 		},
+	},
+
+	created() {
+		// Files renders a header once with '/' and updates it again when the
+		// real folder is known. Both refreshes can overlap, so a single policy
+		// decides which result is allowed to reach the DOM.
+		this.refresh = createContentRefresh({
+			zone: this.zoneId,
+			config: this.config,
+			adapter: this.fileListAdapter,
+			load: async (url) => {
+				const response = await axios.get(url)
+				return response.data
+			},
+			onResult: (election, content) => {
+				this.election = election
+				this.content = content
+				if (election === null) {
+					logger.debug('[' + this.zone + '] No file elected for path ' + this.path)
+					return
+				}
+				logger.debug('[' + this.zone + '] File elected: ' + election.fileName
+					+ ' (' + election.reason + ') for path ' + this.path)
+				if (this.zone === FOOTER.domClass && content !== null) {
+					this.adjustCSS()
+				}
+			},
+		})
 	},
 
 	async mounted() {
-		await this.refresh()
+		await this.refresh(this.path)
 	},
 
 	methods: {
-		async refresh() {
-			this.election = electForZone({
-				zone: this.zoneId,
-				config: this.config,
-				directoryNames: await this.fileListAdapter.directoryNames(this.path),
-			})
-
-			if (this.election === null) {
-				logger.debug('[' + this.zone + '] No file elected for path ' + this.path)
-				this.content = null
-				return
-			}
-
-			logger.debug('[' + this.zone + '] File elected: ' + this.election.fileName
-				+ ' (' + this.election.reason + ') for path ' + this.path)
-			const url = this.fileListAdapter.downloadUrl(this.election.fileName, this.path)
-			const response = await axios.get(url)
-			this.content = response.data
-
-			if (this.zone === FOOTER.domClass && this.content !== null) {
-				this.adjustCSS()
-			}
-		},
-
 		adjustCSS() {
 			const container = this.fileListAdapter.footerContainer()
 			if (!container) {

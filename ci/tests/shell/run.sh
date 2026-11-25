@@ -41,6 +41,25 @@ unset KEEP_STACK UPDATE_BASELINES FULL_VERSION NEXTCLOUD_VERSION COMPAT_VERSIONS
 unset NEGATIVE_VERSION BASE_SHA FULL_IMAGE COMPAT_IMAGE NEGATIVE_IMAGE NEXTCLOUD_IMAGE
 unset NC_ADMIN_USER NC_ADMIN_PASSWORD
 
+# The support declaration is the source of truth for the hook, CI expectations
+# and docs. Parse it here so a drift in any of those copies fails this suite.
+app_info="$CI_DIR/../appinfo/info.xml"
+set -- $(support_range "$app_info")
+support_min=${1:-}
+support_max=${2:-}
+[ -n "$support_min" ] && [ -n "$support_max" ] ||
+	ci_fail "could not parse support range from $app_info"
+printf 'ok support range from info.xml: %s-%s\n' "$support_min" "$support_max"
+support_allows "$support_min" "$app_info" || ci_fail "minimum version $support_min is not allowed"
+support_allows "$support_max" "$app_info" || ci_fail "maximum version $support_max is not allowed"
+if support_allows "$((support_min - 1))" "$app_info"; then
+	ci_fail 'version below the declared minimum was allowed'
+fi
+if support_allows "$((support_max + 1))" "$app_info"; then
+	ci_fail 'version above the declared maximum was allowed'
+fi
+printf 'ok support range boundaries\n'
+
 full_config=$(ci_config full)
 assert_has "export PROJECT='files_readmemd-ci'" "$full_config" 'full project'
 assert_has "export CI_PROJECT='files_readmemd-ci'" "$full_config" 'full compose project'
@@ -51,6 +70,22 @@ assert_has "export NEXTCLOUD_IMAGE='nextcloud:29-apache'" "$full_config" 'full i
 assert_has "export STATE_LIST='default features engines-on filelist-extra'" "$full_config" 'full states'
 assert_has "export KEEP_STACK='0'" "$full_config" 'keep-stack default'
 assert_has "export UPDATE_BASELINES='0'" "$full_config" 'baseline default'
+assert_has "export SUPPORT_MIN='$support_min'" "$full_config" 'config exports declared minimum'
+assert_has "export SUPPORT_MAX='$support_max'" "$full_config" 'config exports declared maximum'
+
+boot_hook=$(cat "$CI_DIR/hooks/before-starting/10-enable-files-readmemd.sh")
+assert_has 'support-range.sh' "$boot_hook" 'boot hook sources the support parser'
+assert_has 'support_allows' "$boot_hook" 'boot hook asks the parser about enablement'
+assert_not_has '-gt 29' "$boot_hook" 'boot hook has no hard-coded version threshold'
+
+ci_run=$(cat "$CI_DIR/run.sh")
+assert_has 'support-range.sh' "$ci_run" 'CI runner sources the support parser'
+assert_has 'support_allows' "$ci_run" 'CI runner derives compatibility expectations'
+
+app_readme=$(cat "$CI_DIR/../README.md")
+ci_readme=$(cat "$CI_DIR/README.md")
+assert_has "Nextcloud $support_min–$support_max" "$app_readme" 'app README states the declared range'
+assert_has "Nextcloud $support_min–$support_max" "$ci_readme" 'CI README states the declared range'
 
 negative_config=$(ci_config negative)
 assert_has "export PROJECT='files_readmemd-ci-negative'" "$negative_config" 'negative project'

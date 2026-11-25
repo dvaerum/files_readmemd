@@ -14,6 +14,11 @@ It show README.md in the way gitlab does ✌️ .
 # V3.X
 Starting NC 28 the nextcloud files app has been updated to use vue.js. As a consequence files_readme.md had to be rewritten for most of the parts. This new version is using vue.js as frontend framework. this could introduce new bug or regression that were not present in 2.XX versions.
 
+## Compatibility
+
+Supported: Nextcloud 28–35. The visual matrix verifies 29, 33, 34 and 35;
+30–32 are declared compatible from `appinfo/info.xml` but are not visually
+verified.
 
 # Usage
 

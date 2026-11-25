@@ -14,6 +14,7 @@ STAMP_FILE="$CI_DIR/.build-stamp"
 . "$CI_DIR/lib/config.sh"
 . "$CI_DIR/lib/lifecycle.sh"
 . "$CI_DIR/lib/setup.sh"
+. "$CI_DIR/lib/support-range.sh"
 
 fail() { ci_fail "$@"; }
 
@@ -188,10 +189,25 @@ compat_profile() {
 			"$NEXTCLOUD_IMAGE" "$APP_DIR"
 		STACK_STARTED=1
 		check_wizard
-		if app_enabled; then
-			fail "app unexpectedly enabled on unsupported Nextcloud $version"
+		upload_fixtures
+		apply_state default
+
+		major=$(support_version_major "$NEXTCLOUD_VERSION")
+		[ -n "$major" ] || fail "could not read a major version from $NEXTCLOUD_VERSION"
+		if support_allows "$major" "$APP_DIR/appinfo/info.xml"; then
+			CI_APP_EXPECTED=enabled
+			app_enabled || fail "app was not enabled by the boot hook on Nextcloud $version"
+		else
+			CI_APP_EXPECTED=disabled
+			if app_enabled; then
+				fail "app unexpectedly enabled on unsupported Nextcloud $version"
+			fi
 		fi
-		run_pw compat compat.spec.js
+		export CI_APP_EXPECTED
+
+		# The compat profile now asserts real rendering, so it shares the
+		# default state's baselines instead of a stock-UI compat directory.
+		run_pw default compat.spec.js
 		# The next version reuses this port, so free it before continuing.
 		# The final stack is left to cleanup, which honours KEEP_STACK.
 		if [ "$version" != "$last_version" ]; then
@@ -237,6 +253,8 @@ negative_profile() {
 		|| fail "enable failed for an unexpected reason: $output"
 	echo "ci: negative control OK — unpatched app rejected on $NEXTCLOUD_VERSION"
 
+	CI_APP_EXPECTED=disabled
+	export CI_APP_EXPECTED
 	run_pw negative compat.spec.js
 }
 
@@ -286,7 +304,7 @@ Usage: ci/run.sh <command>
 
   setup       install app deps, build assets, install Playwright package
   full        full visual matrix on Nextcloud 29 (four configuration states)
-  compat      smoke on Nextcloud 33/34/35 (app must not load there)
+  compat      render check on Nextcloud 33/34/35 where info.xml allows it
   negative    unpatched app at BASE_SHA must be rejected on Nextcloud 35
   all         setup + full + compat + negative
   down        stop and remove both CI project stacks and their volumes

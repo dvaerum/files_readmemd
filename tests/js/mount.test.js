@@ -84,6 +84,55 @@ describe('createMount', () => {
 		vi.useRealTimers()
 	})
 
+	it('reattaches a zone when its container is replaced before an update', async () => {
+		const adapter = fakeAdapter({
+			mountPoint: (definition) => ({
+				parent: () => document.querySelector(definition.adminToken === 'header' ? '#header-slot' : '.files-list'),
+				position: 'append',
+			}),
+		})
+		const mount = createMount({
+			zone: 'headermd',
+			fileListAdapter: adapter,
+			path: '/root',
+		})
+		await flush()
+		expect(document.querySelector('#header-slot .headermd')).not.toBeNull()
+
+		document.getElementById('header-slot').remove()
+		const replacement = document.createElement('div')
+		replacement.id = 'header-slot'
+		document.body.appendChild(replacement)
+
+		mount.update('/subfolder')
+		await flush()
+		expect(document.querySelector('#header-slot .headermd').dataset.path).toBe('/subfolder')
+		expect(document.querySelectorAll('.headermd')).toHaveLength(1)
+	})
+
+	it('reattaches when a Vue host replaces the node without an update', async () => {
+		const adapter = fakeAdapter({
+			mountPoint: (definition) => ({
+				parent: () => document.querySelector(definition.adminToken === 'header' ? '#header-slot' : '.files-list'),
+				position: 'append',
+			}),
+		})
+		const mount = createMount({
+			zone: 'footermd',
+			fileListAdapter: adapter,
+			path: '/root',
+		})
+		await flush()
+		document.querySelector('.footermd').parentElement.remove()
+
+		await flush()
+		expect(document.querySelector('.files-list .footermd')).not.toBeNull()
+
+		mount.destroy()
+		await flush()
+		expect(document.querySelector('.footermd')).toBeNull()
+	})
+
 	it('gets names from the adapter and re-renders when the path changes', async () => {
 		const adapter = fakeAdapter()
 		const mount = createMount({

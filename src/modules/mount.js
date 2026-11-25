@@ -6,8 +6,8 @@
  * Software Foundation, either version 3 of the License, or (at your option)
  * any later version.
  *
- * One mount lifecycle for private and public shares. This module owns the Vue
- * root and its node; adapters supply layout, names, URLs and path changes.
+ * One mount lifecycle for private and public shares. This module owns a stable
+ * wrapper and its Vue root; adapters supply layout, names, URLs and path changes.
  */
 
 import Vue from 'vue'
@@ -25,16 +25,64 @@ const ReadmemdView = Vue.extend(Readmemd)
  */
 export function createMount({ zone: zoneId, fileListAdapter, path }) {
 	const definition = zone(zoneId)
-	const mountPoint = fileListAdapter.mountPoint(definition)
-	let node = mountPoint.existing || document.createElement('div')
+	let destroyed = false
 
-	if (!mountPoint.existing) {
-		if (mountPoint.position === 'after') {
-			mountPoint.parent.parentNode.insertBefore(node, mountPoint.parent.nextSibling)
-		} else {
-			mountPoint.parent.appendChild(node)
+	/**
+	 * Adapters may resolve the parent lazily: Vue replaces its own header slot
+	 * when a folder view changes, so an element captured earlier can go stale.
+	 *
+	 * @return {object} resolved mount point
+	 */
+	const resolve = () => {
+		const mountPoint = fileListAdapter.mountPoint(definition)
+		return {
+			...mountPoint,
+			parent: typeof mountPoint.parent === 'function' ? mountPoint.parent() : mountPoint.parent,
 		}
 	}
+
+	const observer = typeof MutationObserver === 'function'
+		? new MutationObserver(() => reattach())
+		: null
+	let observed = new Set()
+
+	const observe = (targets) => {
+		if (!observer) {
+			return
+		}
+		const next = new Set(targets.filter((target) => target && target !== document.body))
+		if (next.size === observed.size && [...next].every((target) => observed.has(target))) {
+			return
+		}
+		observer.disconnect()
+		observed = next
+		for (const target of observed) {
+			observer.observe(target, { childList: true })
+		}
+	}
+
+	const insert = (element, target, position) => {
+		if (position === 'after') {
+			target.parentNode.insertBefore(element, target.nextSibling)
+		} else {
+			target.appendChild(element)
+		}
+		observe([target, target.parentNode])
+	}
+
+	// The view renders a comment placeholder when no file is elected. Vue
+	// replaces its own root on that transition, so keep a separate wrapper that
+	// survives it and is the element this mount owns.
+	const container = document.createElement('div')
+	const initial = resolve()
+	const mountTarget = initial.existing || document.createElement('div')
+
+	if (initial.existing) {
+		initial.existing.parentNode.insertBefore(container, initial.existing)
+	} else {
+		insert(container, initial.parent, initial.position)
+	}
+	container.appendChild(mountTarget)
 
 	const view = new ReadmemdView({
 		propsData: { fileListAdapter },
@@ -43,10 +91,23 @@ export function createMount({ zone: zoneId, fileListAdapter, path }) {
 			zone: definition.domClass,
 			path,
 		},
-	}).$mount(node)
-	node = view.$el
+	}).$mount(mountTarget)
+	observe([container.parentNode, container.parentNode && container.parentNode.parentNode])
 
-	const setPath = (newPath) => { view.path = newPath }
+	const reattach = () => {
+		if (destroyed || container.isConnected) {
+			return
+		}
+		const current = resolve()
+		if (current.parent) {
+			insert(container, current.parent, current.position)
+		}
+	}
+
+	const setPath = (newPath) => {
+		view.path = newPath
+		reattach()
+	}
 	const unsubscribe = typeof fileListAdapter.onPathChange === 'function'
 		? fileListAdapter.onPathChange(setPath)
 		: () => {}
@@ -56,10 +117,14 @@ export function createMount({ zone: zoneId, fileListAdapter, path }) {
 		update: setPath,
 
 		destroy() {
+			destroyed = true
+			if (observer) {
+				observer.disconnect()
+			}
 			unsubscribe()
 			view.$destroy()
-			if (node.parentNode) {
-				node.parentNode.removeChild(node)
+			if (container.parentNode) {
+				container.parentNode.removeChild(container)
 			}
 		},
 	}

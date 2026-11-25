@@ -53,7 +53,8 @@ pw_run() {
 	update_baselines=$3
 	shift 3
 	ci_compose "$compose_file" "$project" run --rm \
-		-e "UPDATE_BASELINES=$update_baselines" playwright "$@"
+		-e "UPDATE_BASELINES=$update_baselines" \
+		-e "CI_APP_EXPECTED=${CI_APP_EXPECTED:-}" playwright "$@"
 }
 
 wait_for_pg() {

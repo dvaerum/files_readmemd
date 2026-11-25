@@ -68,6 +68,9 @@ services:
       - nextcloud:/var/www/html
       - ${APP_SOURCE:-..}:/var/www/html/custom_apps/files_readmemd:ro
       - ./hooks/before-starting:/docker-entrypoint-hooks.d/before-starting:ro
+      # The boot hook reads this parser even when APP_SOURCE is the unpatched
+      # negative-control worktree, which has no ci/lib directory.
+      - ./lib:/readmemd-ci-lib:ro
 
   # Real Firefox runs in the pinned Playwright image, so local runs and GitHub
   # Actions use the exact same browser, fonts and rendering. Screenshots are

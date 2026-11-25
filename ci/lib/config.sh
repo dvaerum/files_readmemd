@@ -2,6 +2,9 @@
 # Single configuration seam for the browser CI. ci_config prints shell-safe
 # export assignments; callers eval them once and pass values explicitly.
 
+_ci_dir=${CI_DIR:-$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)}
+. "$_ci_dir/lib/support-range.sh"
+
 ci_fail() { printf 'ci: %s\n' "$*" >&2; exit 1; }
 
 ci_quote() {
@@ -32,6 +35,12 @@ ci_config() {
 	ci_dir=${CI_DIR:-}
 	[ -n "$ci_dir" ] || ci_fail 'CI_DIR must be set before calling ci_config'
 	app_dir=$(dirname "$ci_dir")
+
+	support_info="$app_dir/appinfo/info.xml"
+	support_min=$(support_range_min "$support_info")
+	support_max=$(support_range_max "$support_info")
+	[ -n "$support_min" ] && [ -n "$support_max" ] ||
+		ci_fail "could not read support range from $support_info"
 
 	main_project=${CI_PROJECT:-files_readmemd-ci}
 	negative_project=${CI_NEGATIVE_PROJECT:-files_readmemd-ci-negative}
@@ -101,6 +110,8 @@ ci_config() {
 	ci_emit KEEP_STACK "${KEEP_STACK:-0}"
 	ci_emit UPDATE_BASELINES "${UPDATE_BASELINES:-0}"
 	ci_emit BASE_SHA "$base_sha"
+	ci_emit SUPPORT_MIN "$support_min"
+	ci_emit SUPPORT_MAX "$support_max"
 	stamp=$(ci_build_stamp "$app_dir")
 	ci_emit BUILD_STAMP "$stamp"
 	ci_emit CI_UID "$(id -u)"
