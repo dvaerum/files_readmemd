@@ -10,8 +10,8 @@ describe('decodeConfig', () => {
 			show_title: 'off',
 			auto_refresh: 'yes',
 			disable_workspace: 'no',
-			fileslist_header: '["HEADER","EXTRA"]',
-			fileslist_footer: '["README"]',
+			fileslist_header: ['HEADER', 'EXTRA'],
+			fileslist_footer: ['README'],
 		})).toEqual({
 			engines: { markdown: true, asciidoc: true, html: false },
 			baseNames: { headermd: ['HEADER', 'EXTRA'], footermd: ['README'] },
@@ -29,7 +29,7 @@ describe('decodeConfig', () => {
 			show_asciidoc: 'maybe',
 			yellow_back: 'on',
 			fileslist_header: '{"not":"a list"}',
-			fileslist_footer: '[1]',
+			fileslist_footer: [1],
 			unknown_key: 'ignored',
 		})).toEqual({
 			engines: { markdown: true, asciidoc: false, html: false },
@@ -43,12 +43,17 @@ describe('decodeConfig', () => {
 		})
 	})
 
+	it('accepts legacy JSON array strings as well as wire arrays', () => {
+		expect(decodeConfig({ fileslist_footer: '["FEATURES"]' }).baseNames.footermd)
+			.toEqual(['FEATURES'])
+	})
+
 	it('keeps markdown enabled regardless of wire flags', () => {
 		expect(decodeConfig({ show_markdown: 'false' }).engines.markdown).toBe(true)
 	})
 
 	it('returns a frozen normalized result', () => {
-		const config = decodeConfig({ fileslist_header: '["HEADER"]' })
+		const config = decodeConfig({ fileslist_header: ['HEADER'] })
 		expect(Object.isFrozen(config)).toBe(true)
 		expect(Object.isFrozen(config.engines)).toBe(true)
 		expect(Object.isFrozen(config.baseNames)).toBe(true)

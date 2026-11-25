@@ -71,26 +71,25 @@ function parseBoolean(value, fallback) {
 }
 
 /**
- * @param {*} value raw wire value
+ * @param {*} value raw wire value: an array in the current wire map, or a JSON
+ *                  array string from older callers
  * @param {string[]} fallback value when the wire value is not a Base name list
  * @return {string[]} ordered Base names
  */
 function parseBaseNames(value, fallback) {
-	if (typeof value !== 'string') {
-		return [...fallback]
-	}
-
-	let decoded
-	try {
-		decoded = JSON.parse(value)
-	} catch {
-		return [...fallback]
+	let decoded = value
+	if (typeof value === 'string') {
+		try {
+			decoded = JSON.parse(value)
+		} catch {
+			return [...fallback]
+		}
 	}
 
 	if (!Array.isArray(decoded) || decoded.some((name) => typeof name !== 'string')) {
 		return [...fallback]
 	}
-	return decoded
+	return [...decoded]
 }
 
 /**

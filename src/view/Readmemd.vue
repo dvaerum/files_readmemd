@@ -5,21 +5,12 @@
 
 <template>
 	<div v-if="election !== null" :class="[ zone ]" :data-filename="election.fileName">
-		<MarkdownEngine v-if="election.engine === 'markdown'"
-			:content="content"
-			:file-list-adapter="fileListAdapter"
-			:path="path" />
-		<HtmlEngine v-if="election.engine === 'html'" :content="content" />
-		<AsciidocEngine v-if="election.engine === 'asciidoc'"
-			:content="content"
-			:file-list-adapter="fileListAdapter" />
+		<RenderEngine :election="election" :content="content" :mount="fileListAdapter" />
 	</div>
 </template>
 
 <script>
-import MarkdownEngine from '../components/MarkdownEngine.vue'
-import HtmlEngine from '../components/HtmlEngine.vue'
-import AsciidocEngine from '../components/AsciidocEngine.vue'
+import RenderEngine from '../components/RenderEngine.vue'
 import axios from '@nextcloud/axios'
 import logger from '../logger.js'
 import { loadState } from '@nextcloud/initial-state'
@@ -33,9 +24,7 @@ export default {
 	name: 'Readmemd',
 
 	components: {
-		MarkdownEngine,
-		HtmlEngine,
-		AsciidocEngine,
+		RenderEngine,
 	},
 
 	props: {
@@ -119,20 +108,3 @@ export default {
 }
 
 </script>
-
-<style scoped>
-.footermd {
-	padding: 1em ;
-	border-top: 1px solid silver ;
-	margin-top: 1em ;
-	text-align: initial ;
-}
-
-.headermd {
-	padding: 1em ;
-	border-bottom: 1px solid silver ;
-	text-align: initial ;
-	z-index: 59 ;
-}
-
-</style>
