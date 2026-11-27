@@ -298,7 +298,10 @@ case "$cmd" in
 	negative) negative_profile ;;
 	all) all_profile ;;
 	down) down_cmd ;;
-	shell-test) "$CI_DIR/tests/shell/run.sh" ;;
+	shell-test)
+		"$CI_DIR/tests/shell/run.sh"
+		(cd "$CI_DIR" && npm run unit)
+		;;
 	help)
 		cat <<EOF
 Usage: ci/run.sh <command>
@@ -309,7 +312,7 @@ Usage: ci/run.sh <command>
   negative    unpatched app at BASE_SHA must be rejected on Nextcloud 35
   all         setup + full + compat + negative
   down        stop and remove both CI project stacks and their volumes
-  shell-test  config/lifecycle unit tests with a fake docker compose
+  shell-test  config/lifecycle and CI error-policy unit tests
 
 Environment:
   FULL_VERSION, COMPAT_VERSIONS, NEGATIVE_VERSION  Nextcloud tags

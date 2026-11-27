@@ -1,4 +1,5 @@
 const { expect } = require('@playwright/test')
+const { appErrors: filterAppErrors } = require('../lib/errorPolicy.js')
 
 const ADMIN_USER = process.env.NC_ADMIN_USER || 'admin'
 const ADMIN_PASSWORD = process.env.NC_ADMIN_PASSWORD || 'admin-password-please-change-me'
@@ -27,24 +28,26 @@ async function openFiles(page, dir) {
 function watchErrors(page) {
   const messages = []
   page.on('console', (message) => {
-    if (message.type() === 'error') messages.push(message.text())
+    if (message.type() === 'error') {
+      messages.push({ message: message.text(), source: message.location().url || '' })
+    }
   })
-  page.on('pageerror', (error) => messages.push(`pageerror: ${error.message}`))
-  return messages
+  page.on('pageerror', (error) => messages.push({ message: `pageerror: ${error.message}`, source: '' }))
+  // Context is read at assertion time: the page navigates after this watcher
+  // is installed, so its final URL is the one that scopes the CSP rule.
+  return {
+    messages,
+    context: () => ({
+      version: process.env.NEXTCLOUD_VERSION || 'unknown',
+      state: process.env.CI_STATE || 'default',
+      url: page.url(),
+    }),
+  }
 }
 
-// Core Nextcloud emits CSP errors on the public-share page and a user-status
-// fetch error in offline containers. Neither comes from this app; everything
-// else must be clean.
-function appErrors(messages) {
-  return messages.filter(
-    (message) =>
-      !/Content-Security-Policy|event\.preventDefault\(\)/.test(message) &&
-      !/core: Failed to load user status/.test(message) &&
-      // NC 33+ logs a bare "Error" from its offline recommendation preview.
-      !/could not load recommendation preview/.test(message) &&
-      message !== 'Error',
-  )
+// Facade kept at every spec call site; the tested policy lives in lib/.
+function appErrors(observed) {
+  return filterAppErrors(observed)
 }
 
 async function readAppConfig(page) {

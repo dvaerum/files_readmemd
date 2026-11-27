@@ -9,6 +9,7 @@ const baseURL = process.env.BASE_URL || 'http://localhost:8290'
 /** @type {import('@playwright/test').PlaywrightTestConfig} */
 module.exports = {
   testDir: './tests',
+  testMatch: '**/*.spec.js',
   fullyParallel: false,
   workers: 1,
   forbidOnly: !!process.env.CI,
