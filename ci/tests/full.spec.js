@@ -39,6 +39,32 @@ test.describe(`files_readmemd visual matrix (${state})`, () => {
     expect(appErrors(errors)).toEqual([])
   })
 
+  test('Base name rows add and delete through the settings UI @state=default', async ({ page }) => {
+    const errors = watchErrors(page)
+    await login(page)
+    await page.goto('/index.php/settings/admin/files_readmemd')
+    await page.locator('#readmeMD-filelist-row-template').waitFor({ state: 'attached' })
+
+    const name = 'RUNTIME-PROOF'
+    const link = page.locator(ciZones.adminLinkSelector('footermd', name))
+    try {
+      await page.locator('#readmeMD-filelist_name-footer').fill(name)
+      await page.locator('#readmeMD-filelist_submit-footer').click()
+      await expect(link).toBeVisible()
+      expect((await readAppConfig(page))[ciZones.configKey('footermd')]).toContain(name)
+
+      await link.click()
+      await expect(link).toHaveCount(0)
+      expect((await readAppConfig(page))[ciZones.configKey('footermd')]).toEqual(['README'])
+    } finally {
+      if (await link.count()) {
+        await link.click()
+        await expect(link).toHaveCount(0)
+      }
+    }
+    expect(appErrors(errors)).toEqual([])
+  })
+
   test('markdown header and footer render @state=default', async ({ page }) => {
     const errors = watchErrors(page)
     await login(page)

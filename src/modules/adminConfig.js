@@ -31,6 +31,7 @@ const SUBMIT_PREFIX = 'readmeMD-filelist_submit-'
 const NAME_PREFIX = 'readmeMD-filelist_name-'
 const LIST_PREFIX = 'readmeMD-filelist_'
 const ITEM_PREFIX = 'readmeMD-filelist-'
+const ROW_TEMPLATE_ID = 'readmeMD-filelist-row-template'
 const FORM_HEADERS = { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' }
 
 /**
@@ -86,22 +87,28 @@ function fileNameUrl(adminToken, fileName) {
 }
 
 /**
- * Append one Base name row to a Zone's list after a successful add.
+ * Append one Base name row by cloning the PHP-owned row prototype.
  *
  * @param {Element} list Zone list element
  * @param {string} adminToken admin token from the declaration
  * @param {string} fileName elected Base name
+ * @param {HTMLTemplateElement} template hidden row prototype from the PHP view
  * @return {void}
  */
-function appendItem(list, adminToken, fileName) {
-	const item = list.ownerDocument.createElement('li')
-	item.className = 'readmeMD-filelist'
+function appendItem(list, adminToken, fileName, template) {
+	const row = template.content.firstElementChild
+	if (!row) {
+		throw new Error('Base name row prototype has no row')
+	}
+
+	const item = row.cloneNode(true)
 	item.id = ITEM_PREFIX + fileName
-	const link = list.ownerDocument.createElement('a')
+	const link = item.querySelector('a')
+	if (!link) {
+		throw new Error('Base name row prototype has no delete link')
+	}
 	link.dataset.zone = adminToken
 	link.dataset.filename = fileName
-	link.className = 'readmeMD-filelist_delete icon-inline icon icon-delete'
-	item.appendChild(link)
 	item.appendChild(list.ownerDocument.createTextNode(fileName))
 	list.appendChild(item)
 }
@@ -115,6 +122,11 @@ function appendItem(list, adminToken, fileName) {
  * @return {void}
  */
 export function bindAdminConfig(root, { request = axiosRequest } = {}) {
+	const rowTemplate = root.getElementById(ROW_TEMPLATE_ID)
+	if (!rowTemplate) {
+		throw new Error('missing Base name row prototype ' + ROW_TEMPLATE_ID)
+	}
+
 	for (const { elementId, key } of engineDescriptors()) {
 		const input = root.getElementById(elementId)
 		if (!input) {
@@ -165,7 +177,7 @@ export function bindAdminConfig(root, { request = axiosRequest } = {}) {
 				logger.error('Failed to add ' + fileName + ' to ' + adminToken, error)
 				return
 			}
-			appendItem(list, adminToken, fileName)
+			appendItem(list, adminToken, fileName, rowTemplate)
 		})
 	}
 }

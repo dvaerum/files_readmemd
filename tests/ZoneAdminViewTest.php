@@ -72,6 +72,20 @@ class ZoneAdminViewTest extends TestCase
         self::assertStringContainsString('data-zone="E:footer" data-filename="E:FOOT"', $html);
     }
 
+    public function testRenderDefinesOneGenericHiddenRowPrototype(): void
+    {
+        $html = $this->newView(new RecordingZoneAdminRenderer())->render();
+
+        self::assertSame(1, substr_count($html, '<template'));
+        self::assertStringContainsString(
+            '<template id="readmeMD-filelist-row-template">'
+                . '<li class="readmeMD-filelist">'
+                . '<a class="readmeMD-filelist_delete icon-inline icon icon-delete"></a>'
+                . '</li></template>',
+            $html
+        );
+    }
+
     public function testAllDynamicValuesCrossTheRendererAdapter(): void
     {
         $renderer = new RecordingZoneAdminRenderer();

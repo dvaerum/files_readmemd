@@ -40,6 +40,7 @@ function renderSettings() {
 	document.body.innerHTML = `
 		<input type="checkbox" id="readmeMD-engine-asciidoc">
 		<input type="checkbox" id="readmeMD-engine-html">
+		<template id="readmeMD-filelist-row-template"><li class="readmeMD-filelist"><a class="readmeMD-filelist_delete icon-inline icon icon-delete"></a></li></template>
 		${lists}`
 }
 
@@ -140,6 +141,31 @@ describe('bindAdminConfig', () => {
 		expect(added).not.toBeNull()
 		expect(added.dataset.zone).toBe('footer')
 		expect(added.parentNode.textContent).toContain('EXTRA-footer')
+	})
+
+	it('clones the row prototype instead of building its own markup', async () => {
+		const prototypeLink = document
+			.getElementById('readmeMD-filelist-row-template')
+			.content.querySelector('a')
+		prototypeLink.className = 'prototype-supplied-delete-class'
+		bindAdminConfig(document, { request: vi.fn(async () => ({})) })
+
+		click(document.getElementById('readmeMD-filelist_submit-footer'))
+		await flush()
+
+		const added = document.getElementById('readmeMD-filelist-EXTRA-footer')
+		expect(added).not.toBeNull()
+		expect(added.className).toBe('readmeMD-filelist')
+		expect(added.querySelector('a').className).toBe('prototype-supplied-delete-class')
+		expect(added.querySelector('a').dataset.zone).toBe('footer')
+		expect(added.textContent).toContain('EXTRA-footer')
+	})
+
+	it('throws when the row prototype is missing', () => {
+		document.getElementById('readmeMD-filelist-row-template').remove()
+
+		expect(() => bindAdminConfig(document, { request: vi.fn(async () => ({})) }))
+			.toThrow(/missing Base name row prototype/)
 	})
 
 	it('removes only the clicked item after a successful remove', async () => {

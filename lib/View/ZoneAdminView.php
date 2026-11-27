@@ -17,6 +17,9 @@ use OCA\ReadmeMD\ZoneDefinition;
  */
 final class ZoneAdminView
 {
+    // The JS adapter clones this one prototype; it never builds row markup.
+    private const ROW_TEMPLATE_ID = 'readmeMD-filelist-row-template';
+
     private ConfigSnapshot $snapshot;
     private ZoneDefinition $zones;
     private ZoneAdminRenderer $renderer;
@@ -33,7 +36,10 @@ final class ZoneAdminView
      */
     public function render(): string
     {
-        $html = '';
+        $html = '<template id="' . self::ROW_TEMPLATE_ID . '">'
+            . '<li class="readmeMD-filelist">'
+            . '<a class="readmeMD-filelist_delete icon-inline icon icon-delete"></a>'
+            . '</li></template>';
         foreach ($this->zones->ids() as $id) {
             $adminToken = $this->zones->field($id, 'adminToken');
             $token = $this->value($adminToken);
