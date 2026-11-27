@@ -16,6 +16,7 @@ import logger from '../logger.js'
 import { loadState } from '@nextcloud/initial-state'
 import { createContentRefresh } from '../modules/contentRefresh.js'
 import { decodeConfig } from '../modules/configDecode.js'
+import { applyFooterLayout } from '../modules/footerLayout.js'
 import { zone, zoneForDomClass } from '../zones.js'
 
 const FOOTER = zone('footermd')
@@ -68,6 +69,7 @@ export default {
 				const response = await axios.get(url)
 				return response.data
 			},
+			logger,
 			onResult: (election, content) => {
 				this.election = election
 				this.content = content
@@ -78,7 +80,7 @@ export default {
 				logger.debug('[' + this.zone + '] File elected: ' + election.fileName
 					+ ' (' + election.reason + ') for path ' + this.path)
 				if (this.zone === FOOTER.domClass && content !== null) {
-					this.adjustCSS()
+					applyFooterLayout(this.fileListAdapter.footerContainer())
 				}
 			},
 		})
@@ -86,24 +88,6 @@ export default {
 
 	async mounted() {
 		await this.refresh(this.path)
-	},
-
-	methods: {
-		adjustCSS() {
-			const container = this.fileListAdapter.footerContainer()
-			if (!container) {
-				return
-			}
-			container.style.setProperty('overflow', 'unset')
-
-			for (const element of container.querySelectorAll(':scope > table > tbody, :scope > table > tfoot')) {
-				element.style.setProperty('min-height', 'unset')
-			}
-
-			for (const element of container.querySelectorAll(':scope > table > tfoot, :scope > table > tfoot > tr')) {
-				element.style.setProperty('height', '65px')
-			}
-		},
 	},
 }
 
