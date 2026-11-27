@@ -100,4 +100,20 @@ class ConfigControllerTest extends TestCase
         $controller->removeFileName('FOOTER', 'footer');
         self::assertSame(['README'], $controller->getConfig()['fileslist_footer']);
     }
+
+    public function testReservedCharactersRoundTripThroughAnEncodedUrlSegment(): void
+    {
+        // The router decodes the single URL segment before calling the
+        // controller; the stored Base name must be byte-identical afterwards.
+        $encodedSegment = 'README%3F%26%2F%23%2B%3D%20%25';
+        $baseName = rawurldecode($encodedSegment);
+        self::assertSame('README?&/#+= %', $baseName);
+
+        $controller = $this->newController();
+        self::assertSame('success', $controller->addFileName($baseName, 'footer'));
+        self::assertSame(['README', $baseName], $controller->getConfig()['fileslist_footer']);
+
+        $controller->removeFileName($baseName, 'footer');
+        self::assertSame(['README'], $controller->getConfig()['fileslist_footer']);
+    }
 }

@@ -131,6 +131,31 @@ describe('bindAdminConfig', () => {
 			.toBe('/apps/files_readmemd/config/filenames/footer/WHAT%3F')
 	})
 
+	it('encodes every reserved character in a Base name segment for adds', async () => {
+		const request = vi.fn(async () => ({}))
+		bindAdminConfig(document, { request })
+		document.getElementById('readmeMD-filelist_name-footer').value = 'README?&/#+= %'
+
+		click(document.getElementById('readmeMD-filelist_submit-footer'))
+		await flush()
+
+		expect(request.mock.calls[0][0].url)
+			.toBe('/apps/files_readmemd/config/filenames/footer/README%3F%26%2F%23%2B%3D%20%25')
+	})
+
+	it('encodes every reserved character in a Base name segment for removes', async () => {
+		const request = vi.fn(async () => ({}))
+		document.getElementById('readmeMD-filelist_footer')
+			.insertAdjacentHTML('beforeend', listItem('footer', 'README?&/#+= %'))
+		bindAdminConfig(document, { request })
+
+		click(document.querySelector('#readmeMD-filelist_footer .readmeMD-filelist_delete'))
+		await flush()
+
+		expect(request.mock.calls[0][0].url)
+			.toBe('/apps/files_readmemd/config/filenames/footer/README%3F%26%2F%23%2B%3D%20%25')
+	})
+
 	it('appends a list item tagged with the Zone after a successful add', async () => {
 		bindAdminConfig(document, { request: vi.fn(async () => ({})) })
 

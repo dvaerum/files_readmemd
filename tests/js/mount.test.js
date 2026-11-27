@@ -236,6 +236,18 @@ describe('real adapters', () => {
 		adapter.onPathChange(() => {})()
 	})
 
+	it('private adapter encodes path and Base name segments but keeps link URL semantics', () => {
+		const adapter = createPrivateAdapter(
+			{ getContents: async () => ({ contents: [] }) },
+			{ parent: document.querySelector('#header-slot'), position: 'append' },
+		)
+
+		expect(adapter.downloadUrl('README?&/#+= %.md', '/docs/a?b#c/d'))
+			.toBe('/remote.php/dav/files/docs/a%3Fb%23c/d/README%3F%26%2F%23%2B%3D%20%25.md')
+		expect(adapter.linkUrl('image.png?version=2#preview', '/dir'))
+			.toBe('/remote.php/dav/files/dir/image.png?version=2#preview')
+	})
+
 	it('public adapter normalizes share files and uses the share download URL', async () => {
 		globalThis.OCA = {
 			Sharing: {

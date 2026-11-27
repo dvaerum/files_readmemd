@@ -10,6 +10,8 @@
  * folder-view shape stay here; the mount module only sees the adapter seam.
  */
 
+import { encodePath, encodePathSegment } from '../modules/pathSegment.js'
+
 /**
  * @param {object} view the Files header view supplied to Header.render()
  * @param {object} layout where this zone's node belongs
@@ -42,9 +44,7 @@ export function createPrivateAdapter(view, layout) {
 		 * @return {string} download URL
 		 */
 		downloadUrl: (fileName, path) => {
-			const dir = path.replace('?', '%3F')
-			const file = fileName.replace('?', '%3F')
-			return OC.linkToRemoteBase('files' + dir + '/' + file)
+			return OC.linkToRemoteBase('files' + encodePath(path) + '/' + encodePathSegment(fileName))
 		},
 
 		/**

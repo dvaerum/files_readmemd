@@ -24,6 +24,7 @@ import axios from '@nextcloud/axios'
 import { generateUrl } from '@nextcloud/router'
 import { adminControlId, configurableEngineIds, wireKey } from '../engines.js'
 import logger from '../logger.js'
+import { encodePathSegment } from './pathSegment.js'
 import { zone, zoneForAdminToken, zoneIds } from '../zones.js'
 
 const CONFIG_ENDPOINT = 'apps/files_readmemd/config'
@@ -82,8 +83,7 @@ function zoneDescriptors() {
  */
 function fileNameUrl(adminToken, fileName) {
 	const { endpointSegment } = zone(zoneForAdminToken(adminToken))
-	const encoded = fileName.replace('?', '%3F')
-	return generateUrl(CONFIG_ENDPOINT + '/filenames/' + endpointSegment + '/' + encoded)
+	return generateUrl(CONFIG_ENDPOINT + '/filenames/' + endpointSegment + '/' + encodePathSegment(fileName))
 }
 
 /**
