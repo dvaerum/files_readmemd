@@ -11,16 +11,8 @@
  * answer. See docs/adr/0001-file-election-policy.md for the tie-break.
  */
 
+import { engineIds, extensions, isAlwaysOn, rank } from '../engines.js'
 import { hasZone } from '../zones.js'
-
-const ENGINE_EXTENSIONS = {
-	markdown: ['md', 'markdown'],
-	asciidoc: ['adoc', 'asciidoc'],
-	html: ['htm', 'html'],
-}
-
-const ENGINE_ORDER = ['markdown', 'asciidoc', 'html']
-const ENGINE_RANK = { markdown: 1, asciidoc: 2, html: 3 }
 
 /**
  * Internal seam: pick the engine for a file name, honouring optional flags.
@@ -36,11 +28,11 @@ function engineType(fileName, config) {
 
 	const ext = fileName.slice(fileName.lastIndexOf('.') + 1).toLowerCase()
 
-	for (const engine of ENGINE_ORDER) {
-		if (!ENGINE_EXTENSIONS[engine].includes(ext)) {
+	for (const engine of engineIds()) {
+		if (!extensions(engine).includes(ext)) {
 			continue
 		}
-		if (config.engines[engine]) {
+		if (isAlwaysOn(engine) || config.engines[engine]) {
 			return engine
 		}
 	}
@@ -60,12 +52,12 @@ function candidateFiles(zoneId, config) {
 	const candidates = []
 
 	baseNames.forEach((baseName, baseIndex) => {
-		for (const engine of ENGINE_ORDER) {
-			if (!config.engines[engine]) {
+		for (const engine of engineIds()) {
+			if (!isAlwaysOn(engine) && !config.engines[engine]) {
 				continue
 			}
 
-			ENGINE_EXTENSIONS[engine].forEach((extension, extensionIndex) => {
+			extensions(engine).forEach((extension, extensionIndex) => {
 				candidates.push({
 					fileName: baseName + '.' + extension,
 					baseName,
@@ -100,7 +92,7 @@ function candidateFiles(zoneId, config) {
  */
 function comparePriority(left, right) {
 	return right.baseIndex - left.baseIndex
-		|| ENGINE_RANK[right.engine] - ENGINE_RANK[left.engine]
+		|| rank(right.engine) - rank(left.engine)
 		|| Number(right.hidden) - Number(left.hidden)
 		|| right.extensionIndex - left.extensionIndex
 }

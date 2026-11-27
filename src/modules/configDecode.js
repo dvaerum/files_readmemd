@@ -18,11 +18,10 @@
  * stays as ADR-0002 requires; every consumer sees normalized values instead.
  */
 
+import { engineIds, isAlwaysOn, wireDefault, wireKey } from '../engines.js'
 import { zone, zoneIds } from '../zones.js'
 
 const BOOLEAN_DEFAULTS = {
-	show_asciidoc: false,
-	show_html: false,
 	yellow_back: true,
 	show_title: true,
 	auto_refresh: false,
@@ -34,12 +33,6 @@ const FLAG_NAMES = {
 	show_title: 'showTitle',
 	auto_refresh: 'autoRefresh',
 	disable_workspace: 'disableWorkspace',
-}
-
-const ENGINE_DEFAULTS = {
-	markdown: true,
-	asciidoc: false,
-	html: false,
 }
 
 const LIST_DEFAULTS = {
@@ -113,11 +106,11 @@ function freeze(value) {
 export function decodeConfig(wireMap) {
 	const raw = wireMap !== null && typeof wireMap === 'object' ? wireMap : {}
 
-	const engines = { ...ENGINE_DEFAULTS }
-	for (const engine of Object.keys(ENGINE_DEFAULTS)) {
-		if (engine !== 'markdown') {
-			engines[engine] = parseBoolean(raw['show_' + engine], ENGINE_DEFAULTS[engine])
-		}
+	const engines = {}
+	for (const id of engineIds()) {
+		engines[id] = isAlwaysOn(id)
+			? true
+			: parseBoolean(raw[wireKey(id)], wireDefault(id))
 	}
 
 	const flags = {}

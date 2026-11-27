@@ -23,10 +23,9 @@
  */
 
 import { generateUrl } from '@nextcloud/router'
+import { hasEngine } from '../engines.js'
 import logger from '../logger.js'
 import { createMarkdownConverter } from './markdownConverter.js'
-
-const ENGINES = ['markdown', 'asciidoc', 'html']
 
 /**
  * Private implementation: load the Markdown theme stylesheet selected by the
@@ -173,7 +172,7 @@ export function createRenderEngine(overrides = {}) {
 			})
 		}
 
-		if (!election || !ENGINES.includes(election.engine)) {
+		if (!election || !hasEngine(election.engine)) {
 			if (election) {
 				log('error', 'Unsupported render engine ' + election.engine)
 			}

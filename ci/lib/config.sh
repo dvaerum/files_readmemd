@@ -22,7 +22,7 @@ ci_build_stamp() {
 		cd "$app_dir"
 		{
 			find src -type f -print
-			for file in package.json package-lock.json webpack.js zones.json; do
+			for file in package.json package-lock.json webpack.js zones.json engines.json; do
 				[ -f "$file" ] && printf '%s\n' "$file"
 			done
 		} | LC_ALL=C sort -u | xargs sha256sum

@@ -27,6 +27,7 @@ $files = [
     $ncRoot . '/lib/public/AppFramework/Services/IInitialState.php',
     $ncRoot . '/lib/public/Util.php',
     $appRoot . '/lib/ZoneDefinition.php',
+    $appRoot . '/lib/EngineDefinition.php',
     $appRoot . '/lib/Services/Config.php',
     $appRoot . '/lib/Services/ConfigSnapshot.php',
     $appRoot . '/lib/View/ZoneAdminRenderer.php',

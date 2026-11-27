@@ -1,0 +1,9 @@
+{
+  "asciidoc": {
+    "extensions": ["adoc"],
+    "wireKey": null,
+    "wireDefault": false,
+    "alwaysOn": false,
+    "adminControlId": "readmeMD-engine-asciidoc"
+  }
+}

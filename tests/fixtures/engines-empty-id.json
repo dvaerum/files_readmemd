@@ -1,0 +1,9 @@
+{
+  "": {
+    "extensions": ["md"],
+    "wireKey": null,
+    "wireDefault": true,
+    "alwaysOn": true,
+    "adminControlId": "readmeMD-engine-markdown"
+  }
+}

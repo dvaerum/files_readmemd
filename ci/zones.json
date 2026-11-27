@@ -1,0 +1,16 @@
+{
+  "headermd": {
+    "adminToken": "header",
+    "configKey": "fileslist_header",
+    "domClass": "headermd",
+    "endpointSegment": "header",
+    "responseSemantics": "silent"
+  },
+  "footermd": {
+    "adminToken": "footer",
+    "configKey": "fileslist_footer",
+    "domClass": "footermd",
+    "endpointSegment": "footer",
+    "responseSemantics": "success"
+  }
+}

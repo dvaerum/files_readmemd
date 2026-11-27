@@ -60,6 +60,18 @@ if support_allows "$((support_max + 1))" "$app_info"; then
 fi
 printf 'ok support range boundaries\n'
 
+# The browser harness runs in its own container, so every declaration is
+# copied into ci/. A copied file must never be a second source of truth.
+for declaration in zones.json engines.json; do
+	app_declaration="$CI_DIR/../$declaration"
+	ci_declaration="$CI_DIR/$declaration"
+	[ -f "$ci_declaration" ] || ci_fail "missing CI declaration copy: $declaration"
+	if ! cmp -s "$app_declaration" "$ci_declaration"; then
+		ci_fail "$declaration differs from the app declaration; sync the CI copy"
+	fi
+	printf 'ok %s parity with app declaration\n' "$declaration"
+done
+
 full_config=$(ci_config full)
 assert_has "export PROJECT='files_readmemd-ci'" "$full_config" 'full project'
 assert_has "export CI_PROJECT='files_readmemd-ci'" "$full_config" 'full compose project'
@@ -232,6 +244,16 @@ ci_dir_copy="$tmp/ci-zones"
 mkdir -p "$ci_dir_copy"
 sync_zone_declaration "$app" "$ci_dir_copy"
 assert_eq 'zone declaration synced to CI harness' '{"headermd":{}}' "$(cat "$ci_dir_copy/zones.json")"
+
+printf '{"markdown":{}}\n' > "$app/engines.json"
+engine_stamp=$(ci_build_stamp "$app")
+if [ "$engine_stamp" = "$zones_stamp" ]; then
+	ci_fail 'build stamp did not change with engine declaration'
+fi
+printf 'ok build stamp tracks engine declaration\n'
+
+sync_engine_declaration "$app" "$ci_dir_copy"
+assert_eq 'engine declaration synced to CI harness' '{"markdown":{}}' "$(cat "$ci_dir_copy/engines.json")"
 
 playwright_dir="$tmp/playwright"
 mkdir -p "$playwright_dir"

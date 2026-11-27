@@ -22,11 +22,11 @@
 
 import axios from '@nextcloud/axios'
 import { generateUrl } from '@nextcloud/router'
+import { adminControlId, configurableEngineIds, wireKey } from '../engines.js'
 import logger from '../logger.js'
 import { zone, zoneForAdminToken, zoneIds } from '../zones.js'
 
 const CONFIG_ENDPOINT = 'apps/files_readmemd/config'
-const ENGINE_NAMES = ['asciidoc', 'html']
 const SUBMIT_PREFIX = 'readmeMD-filelist_submit-'
 const NAME_PREFIX = 'readmeMD-filelist_name-'
 const LIST_PREFIX = 'readmeMD-filelist_'
@@ -59,9 +59,9 @@ function axiosRequest({ method, url, params }) {
  * @return {object[]} engine element id and wire key descriptors
  */
 function engineDescriptors() {
-	return ENGINE_NAMES.map((name) => ({
-		elementId: 'readmeMD-engine-' + name,
-		key: 'show_' + name,
+	return configurableEngineIds().map((id) => ({
+		elementId: adminControlId(id),
+		key: wireKey(id),
 	}))
 }
 

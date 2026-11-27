@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace OCA\ReadmeMD\Tests;
 
+use OCA\ReadmeMD\EngineDefinition;
 use OCA\ReadmeMD\Services\Config;
 use OCA\ReadmeMD\Settings\Admin\Engine;
 use OCP\IConfig;
@@ -36,12 +37,15 @@ class EngineTest extends TestCase
 
     public function testGetFormExposesTypedEngineState(): void
     {
+        $params = $this->newEngine([
+            'show_asciidoc' => '1',
+            'show_html' => 'false',
+        ])->getForm()->getParams();
+
+        self::assertInstanceOf(EngineDefinition::class, $params['engines']);
         self::assertSame([
             'show_asciidoc' => true,
             'show_html' => false,
-        ], $this->newEngine([
-            'show_asciidoc' => '1',
-            'show_html' => 'false',
-        ])->getForm()->getParams());
+        ], array_intersect_key($params, array_flip(['show_asciidoc', 'show_html'])));
     }
 }

@@ -22,6 +22,7 @@
 namespace OCA\ReadmeMD\Services ;
 
 use InvalidArgumentException;
+use OCA\ReadmeMD\EngineDefinition;
 use OCA\ReadmeMD\ZoneDefinition;
 use OCP\IConfig;
 
@@ -32,11 +33,19 @@ class Config {
     private IConfig $config;
     private string $appName;
     private ZoneDefinition $zones;
+    private EngineDefinition $engines;
 
-    public function __construct(IConfig $config, string $appName){
+    public function __construct(IConfig $config, string $appName, ?EngineDefinition $engines = null)
+    {
         $this->config = $config;
         $this->appName = $appName;
         $this->zones = new ZoneDefinition();
+        $this->engines = $engines ?? new EngineDefinition();
+    }
+
+    public function engines(): EngineDefinition
+    {
+        return $this->engines;
     }
 
     public function isKnownZone(string $adminToken): bool
@@ -65,7 +74,7 @@ class Config {
 
     public function snapshot(): ConfigSnapshot
     {
-        $keys = ['show_asciidoc', 'show_html', 'yellow_back', 'show_title', 'auto_refresh', 'disable_workspace'];
+        $keys = ConfigSnapshot::booleanKeys($this->engines);
         foreach ($this->zones->ids() as $id) {
             $keys[] = $this->zones->field($id, 'configKey');
         }
@@ -75,7 +84,7 @@ class Config {
             $raw[$key] = $this->rawValue($key);
         }
 
-        return new ConfigSnapshot($raw, $this->zones);
+        return new ConfigSnapshot($raw, $this->zones, $this->engines);
     }
 
     public function isEngineEnabled(string $engine): bool
@@ -91,12 +100,12 @@ class Config {
 
     public function setEngineEnabled(string $engine, bool $enabled): void
     {
-        $this->store(ConfigSnapshot::engineKey($engine), ConfigSnapshot::toWireBoolean($enabled));
+        $this->store($this->snapshot()->engineKey($engine), ConfigSnapshot::toWireBoolean($enabled));
     }
 
     public function setFlag(string $key, bool $enabled): void
     {
-        if (!ConfigSnapshot::isBooleanKey($key)) {
+        if (!$this->snapshot()->isBooleanKey($key)) {
             throw new InvalidArgumentException("unknown boolean config key '$key'");
         }
         $this->store($key, ConfigSnapshot::toWireBoolean($enabled));
@@ -132,8 +141,9 @@ class Config {
      */
     public function setWireValue(string $key, string $value): void
     {
-        if (ConfigSnapshot::isBooleanKey($key)) {
-            $this->setFlag($key, ConfigSnapshot::parseBoolean($value, ConfigSnapshot::defaultBoolean($key)));
+        $snapshot = $this->snapshot();
+        if ($snapshot->isBooleanKey($key)) {
+            $this->setFlag($key, ConfigSnapshot::parseBoolean($value, $snapshot->defaultBoolean($key)));
             return;
         }
 

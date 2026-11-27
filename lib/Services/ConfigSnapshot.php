@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace OCA\ReadmeMD\Services;
 
 use InvalidArgumentException;
+use OCA\ReadmeMD\EngineDefinition;
 use OCA\ReadmeMD\ZoneDefinition;
 
 /**
@@ -16,9 +17,7 @@ use OCA\ReadmeMD\ZoneDefinition;
 final class ConfigSnapshot
 {
     /** @var array<string, bool> */
-    private const BOOLEAN_DEFAULTS = [
-        'show_asciidoc' => false,
-        'show_html' => false,
+    private const FLAG_DEFAULTS = [
         'yellow_back' => true,
         'show_title' => true,
         'auto_refresh' => false,
@@ -31,13 +30,8 @@ final class ConfigSnapshot
         'fileslist_footer' => ['README'],
     ];
 
-    /** @var array<string, string> */
-    private const ENGINE_KEYS = [
-        'asciidoc' => 'show_asciidoc',
-        'html' => 'show_html',
-    ];
-
     private ZoneDefinition $zones;
+    private EngineDefinition $engines;
 
     /** @var array<string, bool> */
     private array $booleans = [];
@@ -45,10 +39,16 @@ final class ConfigSnapshot
     /** @var array<string, list<string>> */
     private array $lists = [];
 
-    /** @param array<string, mixed> $rawValues */
-    public function __construct(array $rawValues, ?ZoneDefinition $zones = null)
-    {
+    /**
+     * @param array<string, mixed> $rawValues
+     */
+    public function __construct(
+        array $rawValues,
+        ?ZoneDefinition $zones = null,
+        ?EngineDefinition $engines = null
+    ) {
         $this->zones = $zones ?? new ZoneDefinition();
+        $this->engines = $engines ?? new EngineDefinition();
 
         foreach ($this->zones->ids() as $id) {
             $key = $this->zones->field($id, 'configKey');
@@ -59,7 +59,15 @@ final class ConfigSnapshot
             }
         }
 
-        foreach (self::BOOLEAN_DEFAULTS as $key => $default) {
+        $defaults = [];
+        foreach ($this->engines->wireKeys() as $key) {
+            $defaults[$key] = $this->engines->wireDefault($this->engines->idForWireKey($key));
+        }
+        foreach (self::FLAG_DEFAULTS as $key => $default) {
+            $defaults[$key] = $default;
+        }
+
+        foreach ($defaults as $key => $default) {
             $raw = $rawValues[$key] ?? null;
             $this->booleans[$key] = $raw === null
                 ? $default
@@ -131,25 +139,38 @@ final class ConfigSnapshot
         return json_encode($names, JSON_THROW_ON_ERROR);
     }
 
-    public static function isBooleanKey(string $key): bool
+    public function isBooleanKey(string $key): bool
     {
-        return array_key_exists($key, self::BOOLEAN_DEFAULTS);
+        return array_key_exists($key, self::FLAG_DEFAULTS) || $this->engines->hasWireKey($key);
     }
 
-    public static function defaultBoolean(string $key): bool
+    public function defaultBoolean(string $key): bool
     {
-        self::assertBooleanKey($key);
+        $this->assertBooleanKey($key);
 
-        return self::BOOLEAN_DEFAULTS[$key];
-    }
-
-    public static function engineKey(string $engine): string
-    {
-        if (!array_key_exists($engine, self::ENGINE_KEYS)) {
-            throw new InvalidArgumentException("unknown engine '$engine'");
+        if ($this->engines->hasWireKey($key)) {
+            return $this->engines->wireDefault($this->engines->idForWireKey($key));
         }
 
-        return self::ENGINE_KEYS[$engine];
+        return self::FLAG_DEFAULTS[$key];
+    }
+
+    /** @return list<string> */
+    public static function booleanKeys(?EngineDefinition $engines = null): array
+    {
+        $engines = $engines ?? new EngineDefinition();
+
+        return array_merge($engines->wireKeys(), array_keys(self::FLAG_DEFAULTS));
+    }
+
+    public function engineKey(string $engine): string
+    {
+        $key = $this->engines->wireKey($engine);
+        if ($key === null) {
+            throw new InvalidArgumentException("engine '$engine' has no wire key");
+        }
+
+        return $key;
     }
 
     public function zoneKey(string $adminToken): string
@@ -174,19 +195,24 @@ final class ConfigSnapshot
 
     public function booleanValue(string $key): bool
     {
-        self::assertBooleanKey($key);
+        $this->assertBooleanKey($key);
 
         return $this->booleans[$key];
     }
 
     public function isEngineEnabled(string $engine): bool
     {
-        return $this->booleanValue(self::engineKey($engine));
+        return $this->booleanValue($this->engineKey($engine));
     }
 
     public function zones(): ZoneDefinition
     {
         return $this->zones;
+    }
+
+    public function engines(): EngineDefinition
+    {
+        return $this->engines;
     }
 
     /** @return list<string> */
@@ -198,14 +224,10 @@ final class ConfigSnapshot
     /** @return array<string, string|list<string>> */
     public function toWireArray(): array
     {
-        $wire = [
-            'show_asciidoc' => self::toWireBoolean($this->booleans['show_asciidoc']),
-            'show_html' => self::toWireBoolean($this->booleans['show_html']),
-            'yellow_back' => self::toWireBoolean($this->booleans['yellow_back']),
-            'show_title' => self::toWireBoolean($this->booleans['show_title']),
-            'auto_refresh' => self::toWireBoolean($this->booleans['auto_refresh']),
-            'disable_workspace' => self::toWireBoolean($this->booleans['disable_workspace']),
-        ];
+        $wire = [];
+        foreach ($this->booleans as $key => $value) {
+            $wire[$key] = self::toWireBoolean($value);
+        }
 
         foreach ($this->zones->ids() as $id) {
             $key = $this->zones->field($id, 'configKey');
@@ -215,9 +237,9 @@ final class ConfigSnapshot
         return $wire;
     }
 
-    private static function assertBooleanKey(string $key): void
+    private function assertBooleanKey(string $key): void
     {
-        if (!self::isBooleanKey($key)) {
+        if (!$this->isBooleanKey($key)) {
             throw new InvalidArgumentException("unknown boolean config key '$key'");
         }
     }

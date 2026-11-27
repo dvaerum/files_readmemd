@@ -2,13 +2,20 @@
 # Dependency setup with explicit paths and a source hash as the cache key.
 
 # Playwright's container only mounts ci/, so the browser specs cannot read the
-# app-root declaration directly. Copy it in at setup; the copied file is
-# ignored and always overwritten, so there is still one source of truth.
+# app-root declarations directly. Setup overwrites the tracked copies; the
+# shell suite compares them byte-for-byte so a stale copy fails the gate.
 sync_zone_declaration() {
 	app_dir=$1
 	ci_dir=$2
 	[ -f "$app_dir/zones.json" ] || ci_fail "missing zone declaration: $app_dir/zones.json"
 	cp "$app_dir/zones.json" "$ci_dir/zones.json"
+}
+
+sync_engine_declaration() {
+	app_dir=$1
+	ci_dir=$2
+	[ -f "$app_dir/engines.json" ] || ci_fail "missing engine declaration: $app_dir/engines.json"
+	cp "$app_dir/engines.json" "$ci_dir/engines.json"
 }
 
 ensure_playwright() {

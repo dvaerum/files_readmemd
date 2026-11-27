@@ -1,0 +1,16 @@
+{
+  "asciidoc": {
+    "extensions": ["adoc"],
+    "wireKey": "show_asciidoc",
+    "wireDefault": false,
+    "alwaysOn": false,
+    "adminControlId": "readmeMD-engine-html"
+  },
+  "html": {
+    "extensions": ["html"],
+    "wireKey": "show_html",
+    "wireDefault": false,
+    "alwaysOn": false,
+    "adminControlId": "readmeMD-engine-html"
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "markdown": {
+    "extensions": ["md", "markdown"],
+    "wireKey": null,
+    "wireDefault": true,
+    "alwaysOn": true,
+    "adminControlId": "readmeMD-engine-markdown"
+  },
+  "asciidoc": {
+    "extensions": ["adoc", "asciidoc"],
+    "wireKey": "show_asciidoc",
+    "wireDefault": false,
+    "alwaysOn": false,
+    "adminControlId": "readmeMD-engine-asciidoc"
+  },
+  "html": {
+    "extensions": ["htm", "html"],
+    "wireKey": "show_html",
+    "wireDefault": false,
+    "alwaysOn": false,
+    "adminControlId": "readmeMD-engine-html"
+  }
+}

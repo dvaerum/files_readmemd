@@ -19,6 +19,8 @@ package:
 	cp -a   CHANGELOG.md \
 	        LICENSE \
 	        README.md \
+		engines.json \
+		zones.json \
 		appinfo\
 		css \
 		img \
