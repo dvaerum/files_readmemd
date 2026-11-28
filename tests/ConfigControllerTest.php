@@ -70,6 +70,13 @@ class ConfigControllerTest extends TestCase
         $controller->setConfig('not_a_setting', 'true');
     }
 
+    public function testRemovedFlagsAreRejectedAsConfigKeys(): void
+    {
+        $controller = $this->newController();
+        $this->expectException(\InvalidArgumentException::class);
+        $controller->setConfig('show_title', 'true');
+    }
+
     public function testAddAndRemoveFileName(): void
     {
         $controller = $this->newController();

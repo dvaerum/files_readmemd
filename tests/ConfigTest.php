@@ -47,10 +47,6 @@ class ConfigTest extends TestCase
         self::assertSame([
             'show_asciidoc' => 'false',
             'show_html' => 'false',
-            'yellow_back' => 'true',
-            'show_title' => 'true',
-            'auto_refresh' => 'false',
-            'disable_workspace' => 'true',
             'fileslist_header' => ['HEADER'],
             'fileslist_footer' => ['README'],
         ], $snapshot->toWireArray());
@@ -76,17 +72,12 @@ class ConfigTest extends TestCase
             'show_html' => 'ON',
             'show_title' => 'no',
             'yellow_back' => 'garbage',
-            'auto_refresh' => 'TRUE',
-            'disable_workspace' => '',
+            'fileslist_header' => '["HEADER"]',
         ])->snapshot();
 
         self::assertSame([
             'show_asciidoc' => 'true',
             'show_html' => 'true',
-            'yellow_back' => 'true',
-            'show_title' => 'false',
-            'auto_refresh' => 'true',
-            'disable_workspace' => 'false',
             'fileslist_header' => ['HEADER'],
             'fileslist_footer' => ['README'],
         ], $snapshot->toWireArray());
@@ -109,13 +100,12 @@ class ConfigTest extends TestCase
     {
         $config = $this->newConfig();
         $config->setEngineEnabled('html', true);
-        $config->setFlag('show_title', false);
+        $config->setWireValue('show_html', 'false');
         $config->setZoneBaseNames('footer', ['README', 'FEATURES']);
 
-        self::assertSame('true', $this->values['show_html']);
-        self::assertSame('false', $this->values['show_title']);
+        self::assertSame('false', $this->values['show_html']);
         self::assertSame('["README","FEATURES"]', $this->values['fileslist_footer']);
-        self::assertTrue($config->isEngineEnabled('html'));
+        self::assertFalse($config->isEngineEnabled('html'));
         self::assertSame(['README', 'FEATURES'], $config->zoneBaseNames('footer'));
     }
 

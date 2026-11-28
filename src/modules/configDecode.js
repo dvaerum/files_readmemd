@@ -21,20 +21,6 @@
 import { engineIds, isAlwaysOn, wireDefault, wireKey } from '../engines.js'
 import { zone, zoneIds } from '../zones.js'
 
-const BOOLEAN_DEFAULTS = {
-	yellow_back: true,
-	show_title: true,
-	auto_refresh: false,
-	disable_workspace: true,
-}
-
-const FLAG_NAMES = {
-	yellow_back: 'yellowBack',
-	show_title: 'showTitle',
-	auto_refresh: 'autoRefresh',
-	disable_workspace: 'disableWorkspace',
-}
-
 const LIST_DEFAULTS = {
 	fileslist_header: ['HEADER'],
 	fileslist_footer: ['README'],
@@ -101,7 +87,7 @@ function freeze(value) {
  * Decode the app config wire map once.
  *
  * @param {object} wireMap string values from initial state
- * @return {object} frozen normalized config with engines, baseNames and flags
+ * @return {object} frozen normalized config with engines and baseNames
  */
 export function decodeConfig(wireMap) {
 	const raw = wireMap !== null && typeof wireMap === 'object' ? wireMap : {}
@@ -111,11 +97,6 @@ export function decodeConfig(wireMap) {
 		engines[id] = isAlwaysOn(id)
 			? true
 			: parseBoolean(raw[wireKey(id)], wireDefault(id))
-	}
-
-	const flags = {}
-	for (const [key, name] of Object.entries(FLAG_NAMES)) {
-		flags[name] = parseBoolean(raw[key], BOOLEAN_DEFAULTS[key])
 	}
 
 	const baseNames = {}
@@ -128,5 +109,5 @@ export function decodeConfig(wireMap) {
 		baseNames[id] = parseBaseNames(raw[configKey], fallback)
 	}
 
-	return freeze({ engines, baseNames, flags })
+	return freeze({ engines, baseNames })
 }

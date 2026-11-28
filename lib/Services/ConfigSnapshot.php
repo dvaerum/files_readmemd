@@ -16,14 +16,6 @@ use OCA\ReadmeMD\ZoneDefinition;
  */
 final class ConfigSnapshot
 {
-    /** @var array<string, bool> */
-    private const FLAG_DEFAULTS = [
-        'yellow_back' => true,
-        'show_title' => true,
-        'auto_refresh' => false,
-        'disable_workspace' => true,
-    ];
-
     /** @var array<string, list<string>> */
     private const LIST_DEFAULTS = [
         'fileslist_header' => ['HEADER'],
@@ -63,10 +55,6 @@ final class ConfigSnapshot
         foreach ($this->engines->wireKeys() as $key) {
             $defaults[$key] = $this->engines->wireDefault($this->engines->idForWireKey($key));
         }
-        foreach (self::FLAG_DEFAULTS as $key => $default) {
-            $defaults[$key] = $default;
-        }
-
         foreach ($defaults as $key => $default) {
             $raw = $rawValues[$key] ?? null;
             $this->booleans[$key] = $raw === null
@@ -141,18 +129,14 @@ final class ConfigSnapshot
 
     public function isBooleanKey(string $key): bool
     {
-        return array_key_exists($key, self::FLAG_DEFAULTS) || $this->engines->hasWireKey($key);
+        return $this->engines->hasWireKey($key);
     }
 
     public function defaultBoolean(string $key): bool
     {
         $this->assertBooleanKey($key);
 
-        if ($this->engines->hasWireKey($key)) {
-            return $this->engines->wireDefault($this->engines->idForWireKey($key));
-        }
-
-        return self::FLAG_DEFAULTS[$key];
+        return $this->engines->wireDefault($this->engines->idForWireKey($key));
     }
 
     /** @return list<string> */
@@ -160,7 +144,7 @@ final class ConfigSnapshot
     {
         $engines = $engines ?? new EngineDefinition();
 
-        return array_merge($engines->wireKeys(), array_keys(self::FLAG_DEFAULTS));
+        return $engines->wireKeys();
     }
 
     public function engineKey(string $engine): string
