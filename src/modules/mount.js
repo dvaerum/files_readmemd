@@ -1,20 +1,15 @@
 /**
  * @license AGPL-3.0-or-later
  *
- * This program is free software: you can redistribute it and/or modify it under
- * the terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option)
- * any later version.
- *
- * One mount lifecycle for private and public shares. This module owns a stable
- * wrapper and its Vue root; adapters supply layout, names, URLs and path changes.
+ * One mount lifecycle for private and public shares. The wrapper is a custom
+ * element so it cannot be replaced by a Vue component root transition; the
+ * adapter resolves its parent on every path change so a replaced header slot
+ * is picked up without observing DOM mutations.
  */
 
-import Vue from 'vue'
+import { createApp } from 'vue'
 import Readmemd from '../view/Readmemd.vue'
 import { zone } from '../zones.js'
-
-const ReadmemdView = Vue.extend(Readmemd)
 
 /**
  * @param {object} options mount options
@@ -28,104 +23,89 @@ export function createMount({ zone: zoneId, fileListAdapter, path }) {
 	let destroyed = false
 
 	/**
-	 * Adapters may resolve the parent lazily: Vue replaces its own header slot
-	 * when a folder view changes, so an element captured earlier can go stale.
+	 * Adapters resolve their parent lazily: Files replaces the header slot's
+	 * children when a folder view changes.
 	 *
 	 * @return {object} resolved mount point
 	 */
 	const resolve = () => {
-		const mountPoint = fileListAdapter.mountPoint(definition)
+		const point = fileListAdapter.mountPoint(definition)
 		return {
-			...mountPoint,
-			parent: typeof mountPoint.parent === 'function' ? mountPoint.parent() : mountPoint.parent,
+			...point,
+			parent: typeof point.parent === 'function' ? point.parent() : point.parent,
 		}
 	}
 
-	const observer = typeof MutationObserver === 'function'
-		? new MutationObserver(() => reattach())
-		: null
-	let observed = new Set()
+	const container = document.createElement('readmemd-zone')
+	container.className = definition.domClass
+	container.dataset.zone = zoneId
 
-	const observe = (targets) => {
-		if (!observer) {
+	/**
+	 * @param {Element} target parent element
+	 * @param {string} position 'append' or 'after'
+	 * @return {void}
+	 */
+	const insert = (target, position) => {
+		if (!target) {
 			return
 		}
-		const next = new Set(targets.filter((target) => target && target !== document.body))
-		if (next.size === observed.size && [...next].every((target) => observed.has(target))) {
-			return
-		}
-		observer.disconnect()
-		observed = next
-		for (const target of observed) {
-			observer.observe(target, { childList: true })
-		}
-	}
-
-	const insert = (element, target, position) => {
-		if (position === 'after') {
-			target.parentNode.insertBefore(element, target.nextSibling)
+		if (position === 'after' && target.parentNode) {
+			target.parentNode.insertBefore(container, target.nextSibling)
 		} else {
-			target.appendChild(element)
+			target.appendChild(container)
 		}
-		observe([target, target.parentNode])
 	}
 
-	// The view renders a comment placeholder when no file is elected. Vue
-	// replaces its own root on that transition, so keep a separate wrapper that
-	// survives it and is the element this mount owns.
-	const container = document.createElement('div')
 	const initial = resolve()
-	const mountTarget = initial.existing || document.createElement('div')
-
-	if (initial.existing) {
+	if (initial.existing && initial.existing.parentNode) {
 		initial.existing.parentNode.insertBefore(container, initial.existing)
+		initial.existing.remove()
 	} else {
-		insert(container, initial.parent, initial.position)
+		insert(initial.parent, initial.position)
 	}
-	container.appendChild(mountTarget)
 
-	const view = new ReadmemdView({
-		propsData: { fileListAdapter },
-		data: {
-			name: 'readmemd-' + definition.adminToken,
-			zone: definition.domClass,
-			path,
-		},
-	}).$mount(mountTarget)
-	observe([container.parentNode, container.parentNode && container.parentNode.parentNode])
+	const app = createApp(Readmemd, {
+		fileListAdapter,
+		zone: definition.domClass,
+		path,
+	})
+	const view = app.mount(container)
 
+	/** @return {void} reattach only when a folder change removed the wrapper */
 	const reattach = () => {
 		if (destroyed || container.isConnected) {
 			return
 		}
 		const current = resolve()
-		if (current.parent) {
-			insert(container, current.parent, current.position)
-		}
+		insert(current.parent, current.position)
 	}
 
+	/**
+	 * @param {string} newPath directory path
+	 * @return {void}
+	 */
 	const setPath = (newPath) => {
-		view.path = newPath
+		if (destroyed) {
+			return
+		}
+		if (typeof view.update === 'function') {
+			view.update(newPath)
+		}
 		reattach()
 	}
+
 	const unsubscribe = typeof fileListAdapter.onPathChange === 'function'
 		? fileListAdapter.onPathChange(setPath)
 		: () => {}
 
 	return {
-		/** @param {string} newPath directory path */
 		update: setPath,
 
 		destroy() {
 			destroyed = true
-			if (observer) {
-				observer.disconnect()
-			}
 			unsubscribe()
-			view.$destroy()
-			if (container.parentNode) {
-				container.parentNode.removeChild(container)
-			}
+			app.unmount()
+			container.remove()
 		},
 	}
 }

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { createRenderEngine } from '../../src/modules/renderEngine.js'
 
 function deferred() {
@@ -17,7 +17,6 @@ function harness(overrides = {}) {
 	const deps = {
 		logger: { debug: vi.fn(), error: vi.fn() },
 		createConverter: vi.fn(() => result),
-		loadThemeCSS: vi.fn(),
 		loadMarkdownPlugins: vi.fn(async () => {}),
 		...overrides,
 	}
@@ -34,7 +33,6 @@ function mountFixture(mode = 'private') {
 		mode,
 		currentPath: () => '/docs',
 		linkUrl: (link, path) => '/files' + path + '/' + link,
-		footerContainer: () => null,
 	}
 }
 
@@ -43,10 +41,6 @@ function election(engine = 'markdown', fileName = 'README.md') {
 }
 
 describe('createRenderEngine', () => {
-	beforeEach(() => {
-		document.body.dataset.themes = 'default'
-	})
-
 	it('renders Markdown markup, class and elected filename into the host', async () => {
 		const { render, host, deps, converter: md } = harness()
 
@@ -63,7 +57,7 @@ describe('createRenderEngine', () => {
 		expect(md.render).toHaveBeenCalledWith('hello')
 	})
 
-	it('dispatches AsciiDoc through the same seam and loads theme CSS', async () => {
+	it('dispatches AsciiDoc through the same seam', async () => {
 		const { render, host, deps } = harness()
 		const mounted = mountFixture()
 
@@ -74,12 +68,11 @@ describe('createRenderEngine', () => {
 			mount: mounted,
 			path: '/docs',
 		})
-		expect(deps.loadThemeCSS).toHaveBeenCalledWith(mounted)
 		expect(deps.loadMarkdownPlugins).not.toHaveBeenCalled()
 		expect(host.className).toBe('markdown-body')
 	})
 
-	it('passes HTML through without theme CSS or Markdown plugins', async () => {
+	it('passes HTML through without a converter or Markdown plugins', async () => {
 		const { render, host, deps } = harness()
 		const mounted = mountFixture()
 
@@ -88,7 +81,6 @@ describe('createRenderEngine', () => {
 		expect(host.innerHTML).toBe('<b>raw</b>')
 		expect(host.className).toBe('html-body')
 		expect(deps.createConverter).not.toHaveBeenCalled()
-		expect(deps.loadThemeCSS).not.toHaveBeenCalled()
 		expect(deps.loadMarkdownPlugins).not.toHaveBeenCalled()
 	})
 
@@ -156,19 +148,6 @@ describe('createRenderEngine', () => {
 	it('degrades to base markup when a plugin fails to load', async () => {
 		const { render, host, deps } = harness({
 			loadMarkdownPlugins: vi.fn(async () => { throw new Error('plugin missing') }),
-		})
-
-		await expect(render({
-			election: election(), content: 'x', mount: mountFixture(), host,
-		})).resolves.toBeUndefined()
-
-		expect(host.innerHTML).toBe('<p>x</p>')
-		expect(deps.logger.debug).toHaveBeenCalled()
-	})
-
-	it('degrades when theme CSS is unavailable', async () => {
-		const { render, host, deps } = harness({
-			loadThemeCSS: vi.fn(() => { throw new Error('css missing') }),
 		})
 
 		await expect(render({

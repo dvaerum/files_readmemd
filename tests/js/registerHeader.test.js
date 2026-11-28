@@ -1,71 +1,45 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { registerHeader } from '../../src/modules/registerHeader.js'
+import { HEADER_ID, createHeaderDescriptor, registerHeader } from '../../src/modules/registerHeader.js'
 
-// Mirrors the v3.9 registry this app bundles; importing the real package under
-// Vitest pulls in a CommonJS transitive dependency that cannot be named-imported.
-vi.mock('@nextcloud/files', () => ({
-	registerFileListHeaders: (header) => {
-		globalThis._nc_filelistheader ??= []
-		if (!globalThis._nc_filelistheader.some((entry) => entry.id === header.id)) {
-			globalThis._nc_filelistheader.push(header)
-		}
-	},
-}))
+const registerFileListHeader = vi.fn()
+vi.mock('@nextcloud/files', () => ({ registerFileListHeader: (...args) => registerFileListHeader(...args) }))
 
-const header = {
-	id: 'readmemd',
-	order: 100,
-	enabled: () => true,
-	render: () => {},
-	updated: () => {},
-}
-
-describe('registerHeader', () => {
+describe('supported header registration', () => {
 	beforeEach(() => {
+		registerFileListHeader.mockClear()
 		delete globalThis._nc_files_scope
 		delete globalThis._nc_filelistheader
 	})
 
-	it('registers with the legacy array when no scoped registry exists', () => {
-		registerHeader(header)
+	it('registers one descriptor through the public API', () => {
+		const descriptor = createHeaderDescriptor({ render: () => {}, updated: () => {} })
 
-		expect(globalThis._nc_filelistheader).toEqual([header])
+		registerHeader(descriptor)
+
+		expect(registerFileListHeader).toHaveBeenCalledTimes(1)
+		expect(registerFileListHeader).toHaveBeenCalledWith(descriptor)
+		expect(descriptor.id).toBe(HEADER_ID)
+		expect(descriptor.order).toBe(100)
+		expect(descriptor.enabled()).toBe(true)
 	})
 
-	it('does not add the same legacy header twice', () => {
-		registerHeader(header)
-		registerHeader(header)
+	it('never writes a scoped global or a legacy window array', () => {
+		registerHeader(createHeaderDescriptor({ render: () => {}, updated: () => {} }))
 
-		expect(globalThis._nc_filelistheader).toEqual([header])
+		expect(globalThis._nc_files_scope).toBeUndefined()
+		expect(globalThis._nc_filelistheader).toBeUndefined()
 	})
 
-	it('registers with the scoped v4 registry and notifies an existing listener registry', () => {
-		const dispatchEvent = vi.fn()
-		globalThis._nc_files_scope = { v4_0: { registry: { dispatchEvent } } }
+	it('passes the lifecycle callbacks straight through', () => {
+		const render = vi.fn()
+		const updated = vi.fn()
+		const descriptor = createHeaderDescriptor({ render, updated })
 
-		registerHeader(header)
+		descriptor.render('el', 'folder', 'view')
+		descriptor.updated('folder', 'view')
 
-		expect(globalThis._nc_files_scope.v4_0.fileListHeaders.get('readmemd')).toBe(header)
-		expect(dispatchEvent).toHaveBeenCalledWith(
-			expect.objectContaining({ type: 'register:listHeader', detail: header }),
-		)
-	})
-
-	it('also registers with the legacy array on scoped versions', () => {
-		globalThis._nc_files_scope = { v4_0: {} }
-
-		registerHeader(header)
-
-		expect(globalThis._nc_filelistheader).toEqual([header])
-		expect(globalThis._nc_files_scope.v4_0.fileListHeaders.get('readmemd')).toBe(header)
-	})
-
-	it('does not fail when the scope exists but the registry has not been created', () => {
-		const scope = { v4_0: {} }
-		globalThis._nc_files_scope = scope
-
-		expect(() => registerHeader(header)).not.toThrow()
-		expect(scope.v4_0.fileListHeaders.get('readmemd')).toBe(header)
+		expect(render).toHaveBeenCalledWith('el', 'folder', 'view')
+		expect(updated).toHaveBeenCalledWith('folder', 'view')
 	})
 })

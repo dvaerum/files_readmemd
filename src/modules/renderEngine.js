@@ -15,8 +15,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * The Render engine module. One seam turns a File election and its README
- * content file into rendered markup inside a Zone host. Engine dispatch, theme
- * CSS, plugin preparation, converter construction, async markup and checkbox
+ * content file into rendered markup inside a Zone host. Engine dispatch,
+ * plugin preparation, converter construction, async markup and checkbox
  * disabling all sit behind that seam; the view only publishes the election.
  * Dependencies are injected at construction so production supplies real
  * adapters and tests supply local stand-ins.
@@ -26,28 +26,6 @@ import { generateUrl } from '@nextcloud/router'
 import { hasEngine } from '../engines.js'
 import logger from '../logger.js'
 import { createMarkdownConverter } from './markdownConverter.js'
-
-/**
- * Private implementation: load the Markdown theme stylesheet selected by the
- * Mount adapter and the current Nextcloud theme.
- *
- * @param {object} mount Mount adapter
- * @return {void}
- */
-function loadThemeCSS(mount) {
-	const themes = (typeof document !== 'undefined' && document.body && document.body.dataset.themes) || ''
-	if (mount.mode === 'private') {
-		if (themes.startsWith('dark')) {
-			import('github-markdown-css/github-markdown-dark.css')
-		} else if (themes.startsWith('light')) {
-			import('github-markdown-css/github-markdown-light.css')
-		} else if (themes === 'default') {
-			import('github-markdown-css/github-markdown.css')
-		}
-		return
-	}
-	import('github-markdown-css/github-markdown.css')
-}
 
 /**
  * Private implementation: load the optional Markdown plugins the content
@@ -110,13 +88,14 @@ async function createConverter({ engine, mount, path }) {
  * @return {object} production dependencies behind the Render engine seam
  */
 function productionDependencies() {
-	return { logger, createConverter, loadThemeCSS, loadMarkdownPlugins }
+	return { logger, createConverter, loadMarkdownPlugins }
 }
 
 /**
  * Create the Render engine. Every call returns one rendering function with its
  * own latest-wins generation counter, so overlapping folder refreshes cannot
- * let an older result reach the DOM.
+ * let an older result reach the DOM. Theme CSS is loaded once by the bundles;
+ * the stylesheet follows Nextcloud's theming custom properties.
  *
  * @param {object} [overrides] injected dependencies for tests
  * @return {Function} async renderElectedFile(request)
@@ -185,12 +164,6 @@ export function createRenderEngine(overrides = {}) {
 			if (election.engine === 'html') {
 				write(body, 'html-body', election.fileName)
 				return
-			}
-
-			try {
-				deps.loadThemeCSS(mount)
-			} catch {
-				log('debug', 'Theme CSS unavailable; rendering without it')
 			}
 
 			const converter = await deps.createConverter({ engine: election.engine, mount, path: currentPath })

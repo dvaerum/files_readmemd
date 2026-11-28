@@ -5,21 +5,24 @@
 
 <template>
 	<div v-if="election !== null" :class="[ zone ]" :data-filename="election.fileName">
-		<RenderEngine :election="election" :content="content" :mount="fileListAdapter" />
+		<RenderEngine :election="election"
+			:content="content"
+			:mount="fileListAdapter"
+			:path="currentPath" />
 	</div>
+	<p v-else-if="error !== null" class="readmemd-error" role="alert">
+		{{ errorMessage }}
+	</p>
 </template>
 
 <script>
+import { computed, onMounted, ref, watch } from 'vue'
 import RenderEngine from '../components/RenderEngine.vue'
-import axios from '@nextcloud/axios'
 import logger from '../logger.js'
 import { loadState } from '@nextcloud/initial-state'
 import { createContentRefresh } from '../modules/contentRefresh.js'
 import { decodeConfig } from '../modules/configDecode.js'
-import { applyFooterLayout } from '../modules/footerLayout.js'
-import { zone, zoneForDomClass } from '../zones.js'
-
-const FOOTER = zone('footermd')
+import { zoneForDomClass } from '../zones.js'
 
 export default {
 	name: 'Readmemd',
@@ -33,62 +36,59 @@ export default {
 			type: Object,
 			required: true,
 		},
-	},
-
-	data() {
-		return {
-			config: decodeConfig(loadState('files_readmemd', 'config')),
-			election: null,
-			path: null,
-			content: null,
-		}
-	},
-
-	computed: {
-		zoneId() {
-			return zoneForDomClass(this.zone)
+		zone: {
+			type: String,
+			required: true,
 		},
-
-	},
-
-	watch: {
-		path(newPath) {
-			this.refresh(newPath)
+		path: {
+			type: String,
+			default: '',
 		},
 	},
 
-	created() {
-		// Files renders a header once with '/' and updates it again when the
-		// real folder is known. Both refreshes can overlap, so a single policy
-		// decides which result is allowed to reach the DOM.
-		this.refresh = createContentRefresh({
-			zone: this.zoneId,
-			config: this.config,
-			adapter: this.fileListAdapter,
-			load: async (url) => {
-				const response = await axios.get(url)
-				return response.data
-			},
+	setup(props, { expose }) {
+		const config = decodeConfig(loadState('files_readmemd', 'config'))
+		const election = ref(null)
+		const content = ref(null)
+		const error = ref(null)
+		const currentPath = ref(props.path)
+
+		const errorMessage = computed(() => {
+			if (error.value === null) {
+				return ''
+			}
+			return error.value && error.value.message ? error.value.message : String(error.value)
+		})
+
+		// Files renders a header once with '/' and updates it again when the real
+		// folder is known. Both refreshes can overlap; the refresh policy owns
+		// which result is allowed to reach the DOM.
+		const refresh = createContentRefresh({
+			zone: zoneForDomClass(props.zone),
+			config,
+			adapter: props.fileListAdapter,
 			logger,
-			onResult: (election, content) => {
-				this.election = election
-				this.content = content
-				if (election === null) {
-					logger.debug('[' + this.zone + '] No file elected for path ' + this.path)
-					return
-				}
-				logger.debug('[' + this.zone + '] File elected: ' + election.fileName
-					+ ' (' + election.reason + ') for path ' + this.path)
-				if (this.zone === FOOTER.domClass && content !== null) {
-					applyFooterLayout(this.fileListAdapter.footerContainer())
-				}
+			onResult: (nextElection, nextContent, nextError) => {
+				election.value = nextElection
+				content.value = nextContent
+				error.value = nextError
 			},
 		})
-	},
 
-	async mounted() {
-		await this.refresh(this.path)
+		/**
+		 * @param {string} nextPath directory path
+		 * @return {Promise<void>} refresh completion
+		 */
+		const update = (nextPath) => {
+			currentPath.value = nextPath
+			return refresh(nextPath)
+		}
+
+		expose({ update })
+		watch(() => props.path, update)
+		onMounted(() => update(props.path))
+
+		return { election, content, error, errorMessage, currentPath }
 	},
 }
-
 </script>

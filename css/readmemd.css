@@ -1,0 +1,105 @@
+/* One stylesheet for both Zones and both modes. Colors follow Nextcloud's
+   theming custom properties so light and dark themes need no second file. */
+readmemd-zone.headermd,
+readmemd-zone.footermd {
+	display: block;
+	text-align: initial;
+}
+
+readmemd-zone.headermd {
+	padding: 1em;
+	border-bottom: 1px solid var(--color-border, silver);
+	z-index: 59;
+}
+
+readmemd-zone.footermd {
+	padding: 1em;
+	border-top: 1px solid var(--color-border, silver);
+	margin-top: 1em;
+}
+
+readmemd-zone .markdown-body,
+readmemd-zone .html-body {
+	background-color: transparent;
+	color: var(--color-main-text, var(--fgColor-default));
+}
+
+readmemd-zone .markdown-body {
+	--bgColor-default: transparent;
+	--bgColor-muted: var(--color-background-hover, #f6f8fa);
+	--borderColor-default: var(--color-border, #d0d7de);
+	--fgColor-accent: var(--color-primary, #0969da);
+}
+
+readmemd-zone .markdown-body ul,
+readmemd-zone .html-body ul {
+	list-style: initial;
+}
+
+readmemd-zone .markdown-body thead,
+readmemd-zone .html-body thead {
+	position: initial !important;
+}
+
+readmemd-zone .markdown-body em {
+	font-style: italic;
+}
+
+readmemd-zone .info,
+readmemd-zone .warn,
+readmemd-zone .error,
+readmemd-zone .success {
+	background-color: var(--color-background-hover, var(--bgColor-muted));
+	padding: 1em;
+	margin: 1em;
+	border-radius: var(--border-radius, 6px);
+	border-left: 10px solid var(--color-info, var(--fgColor-accent));
+}
+
+readmemd-zone .warn {
+	border-left-color: var(--color-warning, #bf8700);
+}
+
+readmemd-zone .error {
+	border-left-color: var(--color-error, #cf222e);
+}
+
+readmemd-zone .success {
+	border-left-color: var(--color-success, #1a7f37);
+}
+
+readmemd-zone .readmemd-error {
+	color: var(--color-error, #cf222e);
+	padding: 1em;
+}
+
+/* Files has no footer slot: the Zone sits immediately after the list, so its
+   sibling selector must change with it instead of mutating inline styles. */
+.files-list:has(+ readmemd-zone.footermd) {
+	overflow: unset;
+}
+
+.files-list:has(+ readmemd-zone.footermd) > table > tbody,
+.files-list:has(+ readmemd-zone.footermd) > table > tfoot {
+	min-height: unset;
+}
+
+.files-list:has(+ readmemd-zone.footermd) > table > tfoot,
+.files-list:has(+ readmemd-zone.footermd) > table > tfoot > tr {
+	height: 65px;
+}
+
+@media (prefers-color-scheme: dark) {
+
+	readmemd-zone .markdown-body {
+		--fgColor-default: var(--color-main-text, #f0f6fc);
+		--bgColor-muted: var(--color-background-hover, #151b23);
+		--borderColor-default: var(--color-border, #3d444d);
+	}
+}
+
+[data-themes^='dark'] readmemd-zone .markdown-body {
+	--fgColor-default: var(--color-main-text, #f0f6fc);
+	--bgColor-muted: var(--color-background-hover, #151b23);
+	--borderColor-default: var(--color-border, #3d444d);
+}

@@ -1,37 +1,38 @@
 /**
  * @license AGPL-3.0-or-later
  *
- * This program is free software: you can redistribute it and/or modify it under
- * the terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option)
- * any later version.
- *
- * Files header registration. Nextcloud 29 keeps headers in a window array;
- * Nextcloud 33 and later keep them in a versioned scoped Map and notify their
- * registry after mount. Register with both so one bundle works across the
- * declared support range.
+ * Supported file-list header registration. Nextcloud 33 ships
+ * `@nextcloud/files` 4.x with `registerFileListHeader`; there is no scoped
+ * global or legacy window array to mirror here.
  */
 
-import { registerFileListHeaders } from '@nextcloud/files'
+import { registerFileListHeader } from '@nextcloud/files'
+
+/** @return {string} canonical header id */
+export const HEADER_ID = 'readmemd'
 
 /**
- * @param {object} header Files header to register
+ * Build the header descriptor from the mount callbacks.
+ *
+ * @param {object} callbacks header lifecycle callbacks
+ * @param {Function} callbacks.render called with (el, folder, view)
+ * @param {Function} callbacks.updated called with (folder, view)
+ * @return {object} descriptor accepted by registerFileListHeader
+ */
+export function createHeaderDescriptor({ render, updated }) {
+	return {
+		id: HEADER_ID,
+		order: 100,
+		enabled: () => true,
+		render,
+		updated,
+	}
+}
+
+/**
+ * @param {object} header header descriptor
  * @return {void}
  */
 export function registerHeader(header) {
-	registerFileListHeaders(header)
-
-	const globals = globalThis._nc_files_scope && globalThis._nc_files_scope.v4_0
-	if (!globals) {
-		return
-	}
-
-	globals.fileListHeaders ??= new Map()
-	globals.fileListHeaders.set(header.id, header)
-
-	// The registry is created lazily. When it already exists, Files is mounted
-	// and listens for this event to refresh its header list.
-	if (globals.registry && typeof globals.registry.dispatchEvent === 'function') {
-		globals.registry.dispatchEvent(new CustomEvent('register:listHeader', { detail: header }))
-	}
+	registerFileListHeader(header)
 }

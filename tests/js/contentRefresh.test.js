@@ -4,7 +4,6 @@ import { createContentRefresh } from '../../src/modules/contentRefresh.js'
 const config = {
 	engines: { markdown: true, asciidoc: false, html: false },
 	baseNames: { headermd: ['HEADER'], footermd: ['README'] },
-	flags: {},
 }
 
 function deferred() {
@@ -16,20 +15,19 @@ function deferred() {
 
 function create(options) {
 	const onResult = vi.fn()
-	const load = options.load ?? vi.fn(async (url) => `content:${url}`)
 	const logger = options.logger ?? { error: vi.fn() }
+	const adapter = options.adapter ?? {
+		directoryNames: async () => options.names ?? [],
+		loadContent: options.loadContent ?? vi.fn(async (file, path) => `content:${path}/${file}`),
+	}
 	const refresh = createContentRefresh({
 		zone: 'footermd',
 		config,
-		adapter: {
-			directoryNames: async () => options.names,
-			downloadUrl: (file, path) => `${path}/${file}`,
-		},
-		load,
+		adapter,
 		onResult,
 		logger,
 	})
-	return { refresh, onResult, load, logger }
+	return { refresh, onResult, adapter, logger }
 }
 
 describe('createContentRefresh', () => {
@@ -38,18 +36,9 @@ describe('createContentRefresh', () => {
 		const freshNames = deferred()
 		const adapter = {
 			directoryNames: vi.fn((path) => path === '/old' ? staleNames.promise : freshNames.promise),
-			downloadUrl: (file, path) => `${path}/${file}`,
+			loadContent: vi.fn(async (file, path) => `content:${path}/${file}`),
 		}
-		const onResult = vi.fn()
-		const logger = { error: vi.fn() }
-		const refresh = createContentRefresh({
-			zone: 'footermd',
-			config,
-			adapter,
-			load: async (url) => `content:${url}`,
-			onResult,
-			logger,
-		})
+		const { refresh, onResult } = create({ adapter })
 
 		const stale = refresh('/old')
 		const fresh = refresh('/new')
@@ -62,14 +51,18 @@ describe('createContentRefresh', () => {
 		expect(onResult).toHaveBeenCalledWith(
 			expect.objectContaining({ fileName: 'README.md' }),
 			'content:/new/README.md',
+			null,
 		)
 	})
 
-	it('publishes the newest content when an older download finishes later', async () => {
+	it('publishes the newest content when an older load finishes later', async () => {
 		const staleContent = deferred()
 		const freshContent = deferred()
-		const load = vi.fn((url) => url.includes('/old/') ? staleContent.promise : freshContent.promise)
-		const { refresh, onResult } = create({ names: ['README.md'], load })
+		const adapter = {
+			directoryNames: async () => ['README.md'],
+			loadContent: vi.fn((file, path) => path.startsWith('/old') ? staleContent.promise : freshContent.promise),
+		}
+		const { refresh, onResult } = create({ adapter })
 
 		const stale = refresh('/old')
 		const fresh = refresh('/new')
@@ -84,34 +77,26 @@ describe('createContentRefresh', () => {
 		expect(onResult).toHaveBeenCalledWith(
 			expect.objectContaining({ fileName: 'README.md' }),
 			'new content',
+			null,
 		)
 	})
 
 	it('clears the zone when the newest directory elects no file', async () => {
-		const { refresh, onResult, load } = create({ names: [] })
+		const { refresh, onResult, adapter } = create({ names: [] })
 
 		await refresh('/empty')
 
-		expect(onResult).toHaveBeenCalledWith(null, null)
-		expect(load).not.toHaveBeenCalled()
+		expect(onResult).toHaveBeenCalledWith(null, null, null)
+		expect(adapter.loadContent).not.toHaveBeenCalled()
 	})
 
 	it('does not republish a stale file after a newer directory cleared the zone', async () => {
 		const staleNames = deferred()
 		const adapter = {
 			directoryNames: vi.fn((path) => path === '/old' ? staleNames.promise : Promise.resolve([])),
-			downloadUrl: (file, path) => `${path}/${file}`,
+			loadContent: vi.fn(async (file, path) => `content:${path}/${file}`),
 		}
-		const onResult = vi.fn()
-		const logger = { error: vi.fn() }
-		const refresh = createContentRefresh({
-			zone: 'footermd',
-			config,
-			adapter,
-			load: async (url) => `content:${url}`,
-			onResult,
-			logger,
-		})
+		const { refresh, onResult } = create({ adapter })
 
 		const stale = refresh('/old')
 		await refresh('/empty')
@@ -119,31 +104,22 @@ describe('createContentRefresh', () => {
 		await stale
 
 		expect(onResult).toHaveBeenCalledTimes(1)
-		expect(onResult).toHaveBeenCalledWith(null, null)
+		expect(onResult).toHaveBeenCalledWith(null, null, null)
 	})
 
-	it('clears the Zone and logs phase, Zone and path when directory names reject', async () => {
+	it('reports a directory listing failure with phase, Zone and path', async () => {
 		const failure = new Error('listing failed')
-		const adapter = {
-			directoryNames: vi.fn(async () => { throw failure }),
-			downloadUrl: (file, path) => `${path}/${file}`,
-		}
-		const onResult = vi.fn()
-		const logger = { error: vi.fn() }
-		const load = vi.fn()
-		const refresh = createContentRefresh({
-			zone: 'footermd',
-			config,
-			adapter,
-			load,
-			onResult,
-			logger,
+		const { refresh, onResult, logger, adapter } = create({
+			adapter: {
+				directoryNames: vi.fn(async () => { throw failure }),
+				loadContent: vi.fn(),
+			},
 		})
 
 		await expect(refresh('/docs')).resolves.toBeUndefined()
 
-		expect(onResult).toHaveBeenCalledWith(null, null)
-		expect(load).not.toHaveBeenCalled()
+		expect(onResult).toHaveBeenCalledWith(null, null, failure)
+		expect(adapter.loadContent).not.toHaveBeenCalled()
 		expect(logger.error).toHaveBeenCalledTimes(1)
 		const [message, loggedError] = logger.error.mock.calls[0]
 		expect(message).toContain('footermd')
@@ -152,20 +128,20 @@ describe('createContentRefresh', () => {
 		expect(loggedError).toBe(failure)
 	})
 
-	it('clears the Zone and logs phase, Zone and path when the download rejects', async () => {
-		const failure = new Error('download failed')
+	it('reports a content load failure with phase, Zone and path', async () => {
+		const failure = new Error('load failed')
 		const { refresh, onResult, logger } = create({
 			names: ['README.md'],
-			load: vi.fn(async () => { throw failure }),
+			loadContent: vi.fn(async () => { throw failure }),
 		})
 
 		await expect(refresh('/docs')).resolves.toBeUndefined()
 
-		expect(onResult).toHaveBeenCalledWith(null, null)
+		expect(onResult).toHaveBeenCalledWith(null, null, failure)
 		expect(logger.error).toHaveBeenCalledTimes(1)
 		const [message, loggedError] = logger.error.mock.calls[0]
 		expect(message).toContain('footermd')
-		expect(message).toContain('load')
+		expect(message).toContain('loadContent')
 		expect(message).toContain('/docs')
 		expect(loggedError).toBe(failure)
 	})
@@ -174,18 +150,9 @@ describe('createContentRefresh', () => {
 		const staleNames = deferred()
 		const adapter = {
 			directoryNames: vi.fn((path) => path === '/old' ? staleNames.promise : Promise.resolve(['README.md'])),
-			downloadUrl: (file, path) => `${path}/${file}`,
+			loadContent: vi.fn(async (file, path) => `content:${path}/${file}`),
 		}
-		const onResult = vi.fn()
-		const logger = { error: vi.fn() }
-		const refresh = createContentRefresh({
-			zone: 'footermd',
-			config,
-			adapter,
-			load: async (url) => `content:${url}`,
-			onResult,
-			logger,
-		})
+		const { refresh, onResult, logger } = create({ adapter })
 
 		const stale = refresh('/old')
 		await refresh('/new')
@@ -196,67 +163,64 @@ describe('createContentRefresh', () => {
 		expect(onResult).toHaveBeenCalledWith(
 			expect.objectContaining({ fileName: 'README.md' }),
 			'content:/new/README.md',
+			null,
 		)
 		expect(logger.error).not.toHaveBeenCalled()
 	})
 
-	it('does not let an older download failure clear a newer success', async () => {
+	it('does not let an older content failure clear a newer success', async () => {
 		const staleNames = deferred()
 		const freshNames = deferred()
 		const staleContent = deferred()
 		const freshContent = deferred()
-		const load = vi.fn((url) => url.includes('/old/') ? staleContent.promise : freshContent.promise)
-		const onResult = vi.fn()
-		const logger = { error: vi.fn() }
-		const refresh = createContentRefresh({
-			zone: 'footermd',
-			config,
-			adapter: {
-				directoryNames: (path) => path === '/old' ? staleNames.promise : freshNames.promise,
-				downloadUrl: (file, path) => `${path}/${file}`,
-			},
-			load,
-			onResult,
-			logger,
-		})
+		const adapter = {
+			directoryNames: (path) => path === '/old' ? staleNames.promise : freshNames.promise,
+			loadContent: vi.fn((file, path) => path.startsWith('/old') ? staleContent.promise : freshContent.promise),
+		}
+		const { refresh, onResult, logger } = create({ adapter })
 
 		const stale = refresh('/old')
 		staleNames.resolve(['README.md'])
-		await vi.waitFor(() => expect(load).toHaveBeenCalledWith('/old/README.md'))
+		await vi.waitFor(() => expect(adapter.loadContent).toHaveBeenCalledWith('README.md', '/old'))
 		const fresh = refresh('/new')
 		freshNames.resolve(['README.md'])
 		freshContent.resolve('new content')
 		await fresh
-		staleContent.reject(new Error('old download failed'))
+		staleContent.reject(new Error('old load failed'))
 		await expect(stale).resolves.toBeUndefined()
 
 		expect(onResult).toHaveBeenCalledTimes(1)
 		expect(onResult).toHaveBeenCalledWith(
 			expect.objectContaining({ fileName: 'README.md' }),
 			'new content',
+			null,
 		)
 		expect(logger.error).not.toHaveBeenCalled()
 	})
 
-	it('lets a newer download failure clear an older success', async () => {
+	it('lets a newer content failure clear an older success', async () => {
 		const staleContent = deferred()
-		const load = vi.fn((url) => url.includes('/old/')
-			? staleContent.promise
-			: Promise.reject(new Error('new download failed')))
-		const { refresh, onResult, logger } = create({ names: ['README.md'], load })
+		const adapter = {
+			directoryNames: async () => ['README.md'],
+			loadContent: vi.fn((file, path) => path.startsWith('/old')
+				? staleContent.promise
+				: Promise.reject(new Error('new load failed'))),
+		}
+		const { refresh, onResult, logger } = create({ adapter })
 
 		const stale = refresh('/old')
-		await vi.waitFor(() => expect(load).toHaveBeenCalledWith('/old/README.md'))
+		await vi.waitFor(() => expect(adapter.loadContent).toHaveBeenCalledWith('README.md', '/old'))
 		staleContent.resolve('old content')
 		await stale
 		expect(onResult).toHaveBeenLastCalledWith(
 			expect.objectContaining({ fileName: 'README.md' }),
 			'old content',
+			null,
 		)
 
 		await expect(refresh('/failing')).resolves.toBeUndefined()
 
-		expect(onResult).toHaveBeenLastCalledWith(null, null)
+		expect(onResult).toHaveBeenLastCalledWith(null, null, expect.any(Error))
 		expect(logger.error).toHaveBeenCalledTimes(1)
 	})
 })

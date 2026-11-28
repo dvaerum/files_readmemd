@@ -1,23 +1,10 @@
 /**
  * @license AGPL-3.0-or-later
  *
- * This program is free software: you can redistribute it and/or modify it under
- * the terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option)
- * any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- *
- * Files calls a header's render once at startup and updated() again once the
+ * Files calls a header's render once with '/' and updated() again once the
  * real folder is known. Both paths can be in flight at once. This module owns
  * that refresh policy so only the newest path may publish a result, including
- * a failure.
+ * a failure, and exposes the failure to the Zone so it can render an error.
  */
 
 import { electForZone } from './fileElection.js'
@@ -26,13 +13,12 @@ import { electForZone } from './fileElection.js'
  * @param {object} options refresh dependencies
  * @param {string} options.zone canonical zone id
  * @param {object} options.config normalized app config
- * @param {object} options.adapter file-list adapter with names and download URLs
- * @param {Function} options.load loads content from a URL
- * @param {Function} options.onResult receives (election, content)
+ * @param {object} options.adapter file-list adapter with names and content
+ * @param {Function} options.onResult receives (election, content, error)
  * @param {object} options.logger injected logger for phase/Zone/path attribution
  * @return {Function} refresh(path) for the current directory
  */
-export function createContentRefresh({ zone, config, adapter, load, onResult, logger }) {
+export function createContentRefresh({ zone, config, adapter, onResult, logger }) {
 	let generation = 0
 
 	/**
@@ -49,7 +35,7 @@ export function createContentRefresh({ zone, config, adapter, load, onResult, lo
 			return
 		}
 		logger.error('[' + zone + '] ' + phase + ' failed for path ' + path, error)
-		onResult(null, null)
+		onResult(null, null, error)
 	}
 
 	return async (path) => {
@@ -68,20 +54,20 @@ export function createContentRefresh({ zone, config, adapter, load, onResult, lo
 
 		const election = electForZone({ zone, config, directoryNames })
 		if (election === null) {
-			onResult(null, null)
+			onResult(null, null, null)
 			return
 		}
 
 		let content
 		try {
-			content = await load(adapter.downloadUrl(election.fileName, path))
+			content = await adapter.loadContent(election.fileName, path)
 		} catch (error) {
-			fail('load', path, token, error)
+			fail('loadContent', path, token, error)
 			return
 		}
 		if (token !== generation) {
 			return
 		}
-		onResult(election, content)
+		onResult(election, content, null)
 	}
 }

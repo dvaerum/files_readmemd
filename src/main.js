@@ -17,14 +17,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-import { Header } from '@nextcloud/files'
+import 'github-markdown-css/github-markdown.css'
 import logger from './logger.js'
-import { createPrivateAdapter } from './adapters/privateFiles.js'
+import { createPrivateAdapter, privateFooterLayout } from './adapters/privateFiles.js'
 import { createMount } from './modules/mount.js'
-import { registerHeader } from './modules/registerHeader.js'
-
-const HEADER = 'headermd'
-const FOOTER = 'footermd'
+import { createHeaderDescriptor, registerHeader } from './modules/registerHeader.js'
 
 __webpack_nonce__ = btoa(OC.requestToken) 			 		 // eslint-disable-line
 __webpack_public_path__ = OC.linkTo('files_readmemd', 'js/') // eslint-disable-line
@@ -33,47 +30,31 @@ logger.info('initializing ...')
 
 let mounts = []
 
-// Register before the Files app initializes so its lazy header registry always
-// sees this header, whatever order the scripts load in.
-const ReadmeMDHeader = new Header({
-	id: 'readmemd',
-	order: 100,
-
-	enabled(folder, view) {
-		return view.id === 'files' || view.id === 'files.public' || view.id === 'favorites'
-	},
-
-	async render(el, folder, view) {
+// Register before Files initializes so its registry always sees this header,
+// whatever order the scripts load in. The Zone mounts into the supported slot.
+registerHeader(createHeaderDescriptor({
+	render(el, folder) {
 		mounts.forEach((mount) => mount.destroy())
-		mounts = []
-
-		const adapt = (layout) => createPrivateAdapter(view, layout)
-		// Newer Files hosts own the header slot's children, so the zone lives
-		// beside that slot instead of inside it.
-		const modernHeader = el.closest && el.closest('.files-list__header-readmemd')
-		mounts.push(createMount({
-			zone: HEADER,
-			fileListAdapter: adapt({
-				parent: () => (modernHeader
-					? (document.querySelector('.files-list__header-readmemd') || modernHeader)
-					: el),
-				position: modernHeader ? 'after' : 'append',
+		mounts = [
+			createMount({
+				zone: 'headermd',
+				fileListAdapter: createPrivateAdapter(
+					{ parent: el, position: 'append' },
+					{ path: folder.path },
+				),
+				path: folder.path,
 			}),
-			path: folder.path,
-		}))
-		mounts.push(createMount({
-			zone: FOOTER,
-			fileListAdapter: adapt({
-				parent: () => document.querySelector('.files-list'),
-				position: 'after',
+			createMount({
+				zone: 'footermd',
+				fileListAdapter: createPrivateAdapter(privateFooterLayout('footermd'), {
+					path: folder.path,
+				}),
+				path: folder.path,
 			}),
-			path: folder.path,
-		}))
+		]
 	},
 
-	updated(folder, view) {
+	updated(folder) {
 		mounts.forEach((mount) => mount.update(folder.path))
 	},
-})
-
-registerHeader(ReadmeMDHeader)
+}))

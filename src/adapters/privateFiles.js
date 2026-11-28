@@ -1,75 +1,76 @@
 /**
  * @license AGPL-3.0-or-later
  *
- * This program is free software: you can redistribute it and/or modify it under
- * the terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option)
- * any later version.
- *
- * Private Files adapter. All Nextcloud globals and the Files header's
- * folder-view shape stay here; the mount module only sees the adapter seam.
+ * Private Files adapter. WebDAV supplies directory names and content; the
+ * supported header render callback supplies the initial path and mount element.
+ * No Nextcloud global or private Files view object is read here.
  */
 
-import { encodePath, encodePathSegment } from '../modules/pathSegment.js'
+import { findAnchor } from '../modules/anchors.js'
+import { createDav } from '../modules/dav.js'
 
 /**
- * @param {object} view the Files header view supplied to Header.render()
  * @param {object} layout where this zone's node belongs
  * @param {Element|Function} layout.parent parent element or a function returning it
  * @param {string} layout.position 'append' or 'after'
+ * @param {object} [options] injected dependencies
+ * @param {object} [options.dav] WebDAV seam
+ * @param {string} [options.path] initial directory path
  * @return {object} file-list adapter
  */
-export function createPrivateAdapter(view, layout) {
+export function createPrivateAdapter(layout, options = {}) {
+	const access = options.dav || createDav()
+	let currentPath = options.path || ''
+
 	return {
 		mode: 'private',
 
 		whenReady: () => Promise.resolve(),
 
-		currentPath: () => view.getCurrentDirectory ? view.getCurrentDirectory() : '',
+		currentPath: () => currentPath,
+
+		/** @param {string} path new directory path */
+		setPath: (path) => { currentPath = path },
 
 		/**
 		 * @param {string} path directory path
 		 * @return {Promise<string[]>} file names in the directory
 		 */
-		directoryNames: async (path) => {
-			const { contents } = await view.getContents(path)
-			return contents
-				.filter((file) => file.type === 'file')
-				.map((file) => file.basename)
-		},
+		directoryNames: (path) => access.directoryNames(path),
 
 		/**
 		 * @param {string} fileName elected file
 		 * @param {string} path directory path
-		 * @return {string} download URL
+		 * @return {Promise<string>} content file
 		 */
-		downloadUrl: (fileName, path) => {
-			return OC.linkToRemoteBase('files' + encodePath(path) + '/' + encodePathSegment(fileName))
-		},
+		loadContent: (fileName, path) => access.loadContent(fileName, path),
 
 		/**
-		 * Resolve a relative Markdown link exactly as the private bundle did.
-		 *
-		 * @param {string} link link from the rendered Markdown
+		 * @param {string} link link from rendered Markdown
 		 * @param {string} path directory path
-		 * @return {string} download URL
+		 * @return {string} absolute URL for the link
 		 */
-		linkUrl: (link, path) => {
-			const dir = link.startsWith('/') ? '' : path
-			return OC.linkToRemoteBase('files' + dir + '/' + link)
-		},
+		linkUrl: (link, path) => access.linkUrl(link, path),
 
 		/** @param {object} definition zone definition */
 		mountPoint: (definition) => ({
 			parent: typeof layout.parent === 'function' ? layout.parent() : layout.parent,
 			position: layout.position,
-			existing: document.querySelector('.' + definition.domClass),
+			existing: null,
 		}),
-
-		/** @return {Element|null} container whose footer table needs adjusting */
-		footerContainer: () => document.querySelector('.files-list'),
 
 		/** @return {Function} no-op unsubscribe */
 		onPathChange: () => () => {},
 	}
+}
+
+/**
+ * Private zones do not own the supported header slot; the footer uses the one
+ * named anchor probe instead.
+ *
+ * @param {string} zoneId canonical zone id
+ * @return {object} footer layout descriptor
+ */
+export function privateFooterLayout(zoneId) {
+	return { parent: () => findAnchor(zoneId), position: 'after' }
 }

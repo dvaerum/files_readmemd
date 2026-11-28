@@ -25,6 +25,10 @@ export default {
 			type: Object,
 			required: true,
 		},
+		path: {
+			type: String,
+			default: '',
+		},
 	},
 
 	watch: {
@@ -33,6 +37,10 @@ export default {
 		},
 
 		content() {
+			this.render()
+		},
+
+		path() {
 			this.render()
 		},
 	},
@@ -55,77 +63,10 @@ export default {
 				election: this.election,
 				content: this.content,
 				mount: this.mount,
+				path: this.path,
 				host,
 			})
 		},
 	},
 }
 </script>
-
-<style>
-.headermd ul,
-.footermd ul
-{
-	list-style: initial ;
-}
-
-.headermd thead,
-.footermd thead
-{
-	position: initial !important;
-}
-
-.footermd {
-	padding: 1em ;
-	border-top: 1px solid silver ;
-	margin-top: 1em ;
-	text-align: initial ;
-}
-
-.headermd {
-	padding: 1em ;
-	border-bottom: 1px solid silver ;
-	text-align: initial ;
-	z-index: 59 ;
-}
-
-.markdown-body em {
-	font-style:italic ;
-}
-
-.markdown-body {
-	background-color: transparent ;
-}
-
-.markdown-body .info {
-	background-color: var(--callout-background, var(--color-background-hover));
-	border-left: 10px solid var(--color-info) ;
-	padding: 1em ;
-	margin: 1em ;
-	border-radius: var(--border-radius)
-}
-
-.markdown-body .warn {
-	background-color: var(--callout-background, var(--color-background-hover));
-	border-left: 10px solid var(--color-warning) ;
-	padding: 1em ;
-	margin: 1em ;
-	border-radius: var(--border-radius)
-}
-
-.markdown-body .error {
-	background-color: var(--callout-background, var(--color-background-hover));
-	border-left: 10px solid var(--color-error) ;
-	padding: 1em ;
-	margin: 1em ;
-	border-radius: var(--border-radius)
-}
-
-.markdown-body .success {
-	background-color: var(--callout-background, var(--color-background-hover));
-	border-left: 10px solid var(--color-success) ;
-	padding: 1em ;
-	margin: 1em ;
-	border-radius: var(--border-radius)
-}
-</style>

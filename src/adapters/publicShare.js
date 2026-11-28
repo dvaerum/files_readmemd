@@ -1,194 +1,125 @@
 /**
  * @license AGPL-3.0-or-later
  *
- * This program is free software: you can redistribute it and/or modify it under
- * the terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option)
- * any later version.
- *
- * Public-share adapter. Older shares expose OCA.Sharing.PublicApp.fileList;
- * newer shares expose a Vue file list with data-cy rows and no sharing globals.
- * Both shapes are read here so the mount module and the view never touch a
- * Nextcloud global or a hard-coded DOM version.
+ * Public-share adapter. The share token comes from the supported sharing
+ * package and WebDAV handles authentication through the browser session that
+ * core sets when a password-protected share is unlocked. No sharing globals,
+ * row scraping or download endpoint are used.
  */
 
-import { generateUrl } from '@nextcloud/router'
+import { getSharingToken, isPublicShare } from '@nextcloud/sharing/public'
+import { findAnchor } from '../modules/anchors.js'
+import { createDav } from '../modules/dav.js'
+import { zoneForDomClass } from '../zones.js'
 
-const POLL_MS = 1000
-const ROW_SELECTOR = 'tr[data-cy-files-list-row][data-cy-files-list-row-name]'
+const READY_TIMEOUT_MS = 15000
+const READY_INTERVAL_MS = 100
+const PATH_INTERVAL_MS = 1000
 
 /**
- * @return {object|null} legacy public file list, if this share has one
+ * @return {boolean} whether the share view has produced a list to mount beside
  */
-function legacyFileList() {
-	const sharing = globalThis.OCA && globalThis.OCA.Sharing
-	return sharing && sharing.PublicApp ? sharing.PublicApp.fileList : null
-}
-
-/**
- * @return {Element[]} visible file-list rows on a Vue-based share
- */
-function rows() {
-	return Array.from(document.querySelectorAll(ROW_SELECTOR))
-}
-
-/**
- * @return {string} share token, from the legacy input or the share URL
- */
-function shareToken() {
-	const input = document.getElementById('sharingToken')
-	if (input && input.value) {
-		return input.value
-	}
-	const match = globalThis.location.pathname.match(/\/s\/([^/?#]+)/)
-	return match ? decodeURIComponent(match[1]) : ''
-}
-
-/**
- * @return {string} current share directory
- */
-function currentPath() {
-	const list = legacyFileList()
-	if (list && list._currentDirectory !== undefined) {
-		return list._currentDirectory
-	}
-	const dir = new URLSearchParams(globalThis.location.search).get('dir')
-	return dir || ''
-}
-
-/**
- * @return {boolean} whether either file-list shape has rendered
- */
-function isReady() {
-	const list = legacyFileList()
-	if (list && Array.isArray(list.files)) {
-		return true
-	}
-	return rows().length > 0
+function hasShareView() {
+	return Boolean(document.querySelector('.files-list__header, .files-list, .files-list__table'))
 }
 
 /**
  * @param {Function} predicate readiness check
- * @return {Promise<void>} resolves once the check passes
+ * @return {Promise<void>} rejects if the share view never appears
  */
 function waitUntil(predicate) {
 	if (predicate()) {
 		return Promise.resolve()
 	}
-	return new Promise(resolve => {
+	return new Promise((resolve, reject) => {
+		const started = Date.now()
 		const interval = setInterval(() => {
 			if (predicate()) {
 				clearInterval(interval)
 				resolve()
+			} else if (Date.now() - started >= READY_TIMEOUT_MS) {
+				clearInterval(interval)
+				reject(new Error('Public share view did not become ready'))
 			}
-		}, POLL_MS)
+		}, READY_INTERVAL_MS)
 	})
 }
 
 /**
+ * @param {object} [options] injected dependencies
+ * @param {object} [options.dav] WebDAV seam
  * @return {object} file-list adapter for the current public share
  */
-export function createPublicAdapter() {
+export function createPublicAdapter(options = {}) {
+	const access = options.dav || createDav()
+
+	/**
+	 * @return {string} current share directory from the router query
+	 */
+	const currentPath = () => new URL(globalThis.location.href).searchParams.get('dir') || ''
+
 	return {
 		mode: 'public',
 
-		whenReady: () => waitUntil(isReady),
+		whenReady: () => waitUntil(hasShareView),
 
 		currentPath,
 
+		/** @return {void} public paths come from the router, not the header */
+		setPath: () => {},
+
 		/**
+		 * @param {string} path directory path
 		 * @return {Promise<string[]>} file names in the current share directory
 		 */
-		directoryNames: async () => {
-			const list = legacyFileList()
-			if (list && Array.isArray(list.files)) {
-				return list.files
-					.filter((file) => file.type === 'file')
-					.map((file) => file.name)
-			}
-			return rows()
-				.filter((row) => !row.querySelector('.folder-icon'))
-				.map((row) => row.getAttribute('data-cy-files-list-row-name'))
-				.filter(Boolean)
-		},
+		directoryNames: (path) => access.directoryNames(path),
 
 		/**
 		 * @param {string} fileName elected file
 		 * @param {string} path directory path
-		 * @return {string} download URL
+		 * @return {Promise<string>} content file
 		 */
-		downloadUrl: (fileName, path) => {
-			return generateUrl('/s/{token}/download?path={path}&files={file}', {
-				token: shareToken(),
-				path,
-				file: fileName,
-			})
-		},
+		loadContent: (fileName, path) => access.loadContent(fileName, path),
 
 		/**
-		 * Resolve a relative Markdown link exactly as the public bundle did.
-		 *
-		 * @param {string} link link from the rendered Markdown
+		 * @param {string} link link from rendered Markdown
 		 * @param {string} path directory path
-		 * @return {string} download URL
+		 * @return {string} absolute URL for the link
 		 */
-		linkUrl: (link, path) => {
-			return generateUrl('/s/{token}/download?path={path}&files={file}', {
-				token: shareToken(),
-				path,
-				file: link,
-			})
-		},
+		linkUrl: (link, path) => access.linkUrl(link, path),
+
+		/** @return {string} share token from the supported sharing helper */
+		token: () => isPublicShare() ? getSharingToken() : '',
 
 		/** @param {object} definition zone definition */
-		mountPoint: (definition) => {
-			const legacyHeader = document.querySelector('.filelist-header')
-			const legacyFooter = document.querySelector('.filelist-footer')
-			if (legacyHeader || legacyFooter) {
-				return {
-					parent: definition.adminToken === 'header' ? legacyHeader : legacyFooter,
-					position: 'append',
-					existing: document.querySelector('.' + definition.domClass),
-				}
-			}
-
-			// Vue shares put the header and list side by side in #app-content-vue;
-			// inserting after each one keeps the zones above and below the rows.
-			const header = document.querySelector('.files-list__header')
-			const list = document.querySelector('[data-cy-files-list], .files-list')
-			const fallback = document.querySelector('#app-content-vue, #content-vue, main') || document.body
-			const parent = definition.adminToken === 'header'
-				? (header || fallback)
-				: (list || fallback)
-			return {
-				parent,
-				position: parent === document.body ? 'append' : 'after',
-				existing: document.querySelector('.' + definition.domClass),
-			}
-		},
-
-		/** @return {Element|null} container whose footer table needs adjusting */
-		footerContainer: () => {
-			const legacy = document.querySelector('.filelist-header, .filelist-footer')
-			return legacy
-				? document.querySelector('#files-public-content > #preview')
-				: document.querySelector('.files-list')
-		},
+		mountPoint: (definition) => ({
+			parent: () => findAnchor(zoneForDomClass(definition.domClass)),
+			position: 'after',
+			existing: null,
+		}),
 
 		/**
+		 * Nextcloud publishes node events but no directory-navigation event, so
+		 * the query string is the only stable signal available here.
+		 *
 		 * @param {Function} callback path change listener
 		 * @return {Function} unsubscribe
 		 */
 		onPathChange: (callback) => {
 			let current = currentPath()
-			const interval = setInterval(() => {
+			const check = () => {
 				const next = currentPath()
 				if (next !== current) {
 					current = next
 					callback(next)
 				}
-			}, POLL_MS)
-			return () => clearInterval(interval)
+			}
+			const interval = setInterval(check, PATH_INTERVAL_MS)
+			globalThis.addEventListener('popstate', check)
+			return () => {
+				clearInterval(interval)
+				globalThis.removeEventListener('popstate', check)
+			}
 		},
 	}
 }
