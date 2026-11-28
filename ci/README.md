@@ -21,10 +21,10 @@ AI is involved.
 
 ## Compatibility
 
-The app declares support for Nextcloud 28–35 in `appinfo/info.xml`. The boot
+The app declares support for Nextcloud 33–35 in `appinfo/info.xml`. The boot
 hook, `lib/config.sh` and `tests/shell/run.sh` all read that declaration through
 `lib/support-range.sh`; the shell tests fail if the docs disagree with it. The
-visual matrix covers NC 29 for all states and NC 33/34/35 for the default state.
+full visual matrix covers all four states on NC 33, 34 and 35.
 
 ## Commands
 
@@ -32,7 +32,7 @@ Run from this directory (or use `scripts/ci.sh` from the workspace root):
 
 ```sh
 ./run.sh setup      # app npm ci + webpack build, ci npm ci
-./run.sh full       # full visual matrix on NC 29
+./run.sh full       # full visual matrix on NC 33/34/35 (all four states)
 ./run.sh compat     # render check on NC 33/34/35 where info.xml allows it
 ./run.sh negative   # unpatched app must be rejected by NC 35
 ./run.sh all        # setup + all three profiles
@@ -52,7 +52,7 @@ before the compatibility run and leaves the final stacks to cleanup.
 
 | state | settings applied with `occ` | verified in Firefox |
 | --- | --- | --- |
-| `default` | engines off, `HEADER` / `README` | settings page, config API, markdown header/footer, subfolder, public share |
+| `default` | engines off, `HEADER` / `README` | settings page, config initial state, markdown header/footer, subfolder, public share |
 | `features` | footer `FEATURES` | headings, table, task lists, emoji, fenced code |
 | `engines-on` | `show_asciidoc` + `show_html` on | AsciiDoc header, raw HTML footer |
 | `filelist-extra` | extra `VISUALH` / `VISUALF` names | settings list reflects both zones |
@@ -73,7 +73,8 @@ UPDATE_BASELINES=1 ./run.sh full
 git diff -- ci/baselines
 ```
 
-Review the PNG diffs like code before committing them.
+Review the PNG diffs like code before committing them. The compatibility
+profile shares the `default` baselines of each version.
 
 ## Troubleshooting
 

@@ -16,9 +16,8 @@ Starting NC 28 the nextcloud files app has been updated to use vue.js. As a cons
 
 ## Compatibility
 
-Supported: Nextcloud 28–35. The visual matrix verifies 29, 33, 34 and 35;
-30–32 are declared compatible from `appinfo/info.xml` but are not visually
-verified.
+Supported: Nextcloud 33–35. The visual matrix verifies 33, 34 and 35; older
+versions are not declared compatible.
 
 # Usage
 

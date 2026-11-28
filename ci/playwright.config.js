@@ -2,7 +2,7 @@ const path = require('path')
 
 // The stack exports these; the defaults let `npx playwright test` work from
 // this directory when a Nextcloud instance is already listening on 8290.
-const version = process.env.NEXTCLOUD_VERSION || '29-apache'
+const version = process.env.NEXTCLOUD_VERSION || '33-apache'
 const state = process.env.CI_STATE || 'default'
 const baseURL = process.env.BASE_URL || 'http://localhost:8290'
 

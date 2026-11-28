@@ -47,6 +47,7 @@ ci_config() {
 	main_port=${NEXTCLOUD_HOST_PORT:-8290}
 	negative_port=${CI_NEGATIVE_PORT:-8291}
 	base_sha=${BASE_SHA:-c31d8a243678b4f04348c40fca1e5a8e587a05aa}
+	full_versions=${FULL_VERSIONS:-'33-apache 34-apache 35-apache'}
 	compat_versions=${COMPAT_VERSIONS:-'33-apache 34-apache 35-apache'}
 	states='default features engines-on filelist-extra'
 
@@ -73,7 +74,7 @@ ci_config() {
 		full|all|setup)
 			project=$main_project
 			port=$main_port
-			version=${requested_version:-${FULL_VERSION:-${NEXTCLOUD_VERSION:-29-apache}}}
+			version=${requested_version:-${FULL_VERSION:-${NEXTCLOUD_VERSION:-${full_versions%% *}}}}
 			image=${FULL_IMAGE:-${NEXTCLOUD_IMAGE:-nextcloud:$version}}
 			projects=$main_project
 			[ "$profile" = all ] && projects="$main_project $negative_project"
@@ -105,6 +106,7 @@ ci_config() {
 	ci_emit NEGATIVE_PORT "$negative_port"
 	ci_emit NEXTCLOUD_VERSION "$version"
 	ci_emit NEXTCLOUD_IMAGE "$image"
+	ci_emit FULL_VERSIONS "$full_versions"
 	ci_emit COMPAT_VERSIONS "$compat_versions"
 	ci_emit STATE_LIST "$states"
 	ci_emit KEEP_STACK "${KEEP_STACK:-0}"

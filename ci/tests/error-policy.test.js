@@ -4,16 +4,17 @@ const test = require('node:test')
 const { appErrors, classifyErrors } = require('../lib/errorPolicy.js')
 
 const filesPage = {
-  version: '29-apache',
+  version: '32-apache',
   state: 'default',
   url: 'http://localhost:8290/index.php/apps/files/',
 }
 const publicShare = {
-  version: '29-apache',
+  version: '32-apache',
   state: 'default',
   url: 'http://localhost:8290/s/share-token',
 }
 const nc33FilesPage = { ...filesPage, version: '33-apache' }
+const nc33PublicShare = { ...publicShare, version: '33-apache' }
 const textRuntime = 'http://localhost:8290/apps/text/js/vue.runtime.esm-CbNPNm8f.chunk.mjs'
 
 const ruleMetadata = {
@@ -34,6 +35,16 @@ const ruleMetadata = {
   },
   'text-vue-error-handler': {
     id: 'text-vue-error-handler',
+    source: 'nextcloud-text',
+    observedVersion: '33+',
+  },
+  'core-public-share-sw-registration': {
+    id: 'core-public-share-sw-registration',
+    source: 'nextcloud-core',
+    observedVersion: '33+',
+  },
+  'text-public-share-save-failure': {
+    id: 'text-public-share-save-failure',
     source: 'nextcloud-text',
     observedVersion: '33+',
   },
@@ -81,7 +92,7 @@ const cases = [
     ruleId: 'core-recommendation-preview-offline',
   },
   {
-    name: 'recommendation preview noise stays visible on NC 29',
+    name: 'recommendation preview noise stays visible on NC 32',
     observed: 'could not load recommendation preview',
     context: filesPage,
     ignored: false,
@@ -106,7 +117,7 @@ const cases = [
     ignored: false,
   },
   {
-    name: 'bare Error from the Text runtime stays an app error on NC 29',
+    name: 'bare Error from the Text runtime stays an app error on NC 32',
     observed: { message: 'Error', source: textRuntime },
     context: filesPage,
     ignored: false,
@@ -114,6 +125,32 @@ const cases = [
   {
     name: 'near-miss recommendation text stays an app error',
     observed: 'could not load recommendations preview',
+    context: nc33FilesPage,
+    ignored: false,
+  },
+  {
+    name: 'service worker registration noise is ignored on an NC 33 public share',
+    observed: '[ERROR] files: SW registration failed:  JSHandle@object',
+    context: nc33PublicShare,
+    ignored: true,
+    ruleId: 'core-public-share-sw-registration',
+  },
+  {
+    name: 'service worker noise on a private page stays an app error',
+    observed: '[ERROR] files: SW registration failed:  JSHandle@object',
+    context: nc33FilesPage,
+    ignored: false,
+  },
+  {
+    name: 'Text autosave noise is ignored on an NC 33 public share',
+    observed: '[ERROR] text: Failed to save document. JSHandle@object',
+    context: nc33PublicShare,
+    ignored: true,
+    ruleId: 'text-public-share-save-failure',
+  },
+  {
+    name: 'Text autosave noise on a private page stays an app error',
+    observed: '[ERROR] text: Failed to save document. JSHandle@object',
     context: nc33FilesPage,
     ignored: false,
   },

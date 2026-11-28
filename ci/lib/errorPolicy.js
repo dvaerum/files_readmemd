@@ -29,6 +29,26 @@ const RULES = [
     matches: (observation) => /could not load recommendation preview/i.test(observation.message),
   },
   {
+    id: 'core-public-share-sw-registration',
+    source: 'nextcloud-core',
+    observedVersion: '33+',
+    minMajor: 33,
+    matches: (observation, context) =>
+      /files: SW registration failed/.test(observation.message)
+      && /\/s\/[^/]+/.test(context.url || ''),
+  },
+  {
+    // The Text app tries to autosave an opened README on an unlocked public
+    // share; the failure is core-side and does not affect the rendered zones.
+    id: 'text-public-share-save-failure',
+    source: 'nextcloud-text',
+    observedVersion: '33+',
+    minMajor: 33,
+    matches: (observation, context) =>
+      /^\[ERROR\] text: Failed to save document\./.test(observation.message)
+      && /\/s\/[^/]+/.test(context.url || ''),
+  },
+  {
     // NC 33+ Text app logs the raw Error from its vendored Vue runtime when an
     // offline preview fails. The message alone is ambiguous; the source is not.
     id: 'text-vue-error-handler',

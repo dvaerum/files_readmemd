@@ -33,7 +33,7 @@ services:
       retries: 10
 
   app:
-    image: ${NEXTCLOUD_IMAGE:-nextcloud:29-apache}
+    image: ${NEXTCLOUD_IMAGE:-nextcloud:33-apache}
     restart: unless-stopped
     depends_on:
       db:
@@ -86,7 +86,7 @@ services:
       HOME: /tmp
       CI: "true"
       BASE_URL: http://127.0.0.1
-      NEXTCLOUD_VERSION: ${NEXTCLOUD_VERSION:-29-apache}
+      NEXTCLOUD_VERSION: ${NEXTCLOUD_VERSION:-33-apache}
       CI_STATE: ${CI_STATE:-default}
       SHARE_TOKEN: ${SHARE_TOKEN:-}
       UPDATE_BASELINES: ${UPDATE_BASELINES:-0}
@@ -98,8 +98,8 @@ services:
 
 volumes:
   db:
-    name: ${CI_PROJECT:-files_readmemd-ci}_db_${NEXTCLOUD_VERSION:-29-apache}
+    name: ${CI_PROJECT:-files_readmemd-ci}_db_${NEXTCLOUD_VERSION:-33-apache}
   redis:
     name: ${CI_PROJECT:-files_readmemd-ci}_redis
   nextcloud:
-    name: ${CI_PROJECT:-files_readmemd-ci}_nextcloud_${NEXTCLOUD_VERSION:-29-apache}
+    name: ${CI_PROJECT:-files_readmemd-ci}_nextcloud_${NEXTCLOUD_VERSION:-33-apache}

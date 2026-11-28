@@ -120,10 +120,6 @@ reset_config() {
 	occ "$COMPOSE_FILE" "$PROJECT" config:app:delete files_readmemd show_html >/dev/null 2>&1 || true
 	occ "$COMPOSE_FILE" "$PROJECT" config:app:set files_readmemd show_asciidoc --value=false >/dev/null
 	occ "$COMPOSE_FILE" "$PROJECT" config:app:set files_readmemd show_html --value=false >/dev/null
-	occ "$COMPOSE_FILE" "$PROJECT" config:app:set files_readmemd show_title --value=true >/dev/null
-	occ "$COMPOSE_FILE" "$PROJECT" config:app:set files_readmemd yellow_back --value=true >/dev/null
-	occ "$COMPOSE_FILE" "$PROJECT" config:app:set files_readmemd auto_refresh --value=false >/dev/null
-	occ "$COMPOSE_FILE" "$PROJECT" config:app:set files_readmemd disable_workspace --value=true >/dev/null
 	occ "$COMPOSE_FILE" "$PROJECT" config:app:set files_readmemd fileslist_header --value='["HEADER"]' >/dev/null
 	occ "$COMPOSE_FILE" "$PROJECT" config:app:set files_readmemd fileslist_footer --value='["README"]' >/dev/null
 }
@@ -164,18 +160,28 @@ full_profile() {
 	eval "$config"
 	[ -n "$TEARDOWN_PROJECTS" ] || TEARDOWN_PROJECTS="$PROJECT"
 	setup_cmd
-	stack_up "$COMPOSE_FILE" "$PROJECT" "$HOST_PORT" "$NEXTCLOUD_VERSION" \
-		"$NEXTCLOUD_IMAGE" "$APP_DIR"
-	STACK_STARTED=1
-	app_enabled || fail 'app was not enabled by the boot hook'
-	check_wizard
-	upload_fixtures
-	create_share
-	for state_name in $STATE_LIST; do
-		apply_state "$state_name"
-		run_pw "$state_name" full.spec.js
+	last_version=${FULL_VERSIONS##* }
+	for version in $FULL_VERSIONS; do
+		version_config=$(ci_config full "$version")
+		eval "$version_config"
+		stack_up "$COMPOSE_FILE" "$PROJECT" "$HOST_PORT" "$NEXTCLOUD_VERSION" \
+			"$NEXTCLOUD_IMAGE" "$APP_DIR"
+		STACK_STARTED=1
+		app_enabled || fail "app was not enabled by the boot hook on Nextcloud $version"
+		check_wizard
+		upload_fixtures
+		create_share
+		for state_name in $STATE_LIST; do
+			apply_state "$state_name"
+			run_pw "$state_name" full.spec.js
+		done
+		apply_state default
+		# The next version reuses this port; leave the final stack to cleanup.
+		if [ "$version" != "$last_version" ]; then
+			stack_down "$COMPOSE_FILE" "$PROJECT"
+			STACK_STARTED=0
+		fi
 	done
-	apply_state default
 }
 
 compat_profile() {
@@ -307,7 +313,7 @@ case "$cmd" in
 Usage: ci/run.sh <command>
 
   setup       install app deps, build assets, install Playwright package
-  full        full visual matrix on Nextcloud 29 (four configuration states)
+  full        full visual matrix on NC 33/34/35 (four configuration states)
   compat      render check on Nextcloud 33/34/35 where info.xml allows it
   negative    unpatched app at BASE_SHA must be rejected on Nextcloud 35
   all         setup + full + compat + negative
@@ -315,7 +321,7 @@ Usage: ci/run.sh <command>
   shell-test  config/lifecycle and CI error-policy unit tests
 
 Environment:
-  FULL_VERSION, COMPAT_VERSIONS, NEGATIVE_VERSION  Nextcloud tags
+  FULL_VERSIONS, COMPAT_VERSIONS, NEGATIVE_VERSION  Nextcloud tags
   BASE_SHA        unpatched app commit (defaults to upstream v3.0.2 commit)
   UPDATE_BASELINES=1  the only switch that regenerates screenshots
   KEEP_STACK=1    leave the final stack(s) running for inspection

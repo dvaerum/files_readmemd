@@ -1,38 +1,34 @@
 # ADR-0005: Support range and negative control
 
-Status: Accepted (Phase 7 of `docs/improvements-plan.md`).
+Status: Accepted (port to Nextcloud 33–35).
 
 ## Context
 
-`appinfo/info.xml` declares `min-version="28" max-version="29"`. The full visual
-matrix runs on NC 29; the compatibility profile currently asserts the app is
-**not** enabled on NC 33/34/35; the negative control checks out `BASE_SHA` with
-the same support range and expects NC 35 to reject it. That compares the app
-with itself and does not prove a patched app works where an unpatched one fails.
+The upstream app declared `min-version="28" max-version="29"` and relied on
+integration points that Nextcloud 33 removed: `OCA.Sharing`, the old Files
+header registration and script-side config reads. Declaring 28–35 while only
+testing 29 and treating 33–35 as "compat" smoke checks hid those breakages.
 
-Nextcloud's app dependency analyzer reads a single `<nextcloud>` element
-(`DependencyAnalyzer::analyzeOC()`), so disjoint ranges cannot be declared. A
-range that includes 33–35 from a minimum of 28 also includes 30–32; those
-versions are declared compatible but are not part of the visual matrix.
+The unpatched baseline at `BASE_SHA=c31d8a243678b4f04348c40fca1e5a8e587a05aa`
+still declares 28–29. On NC 35 that range alone makes the app incompatible, so
+it remains a valid negative control without patching the baseline worktree.
 
 ## Decision
 
-Extend support. `appinfo/info.xml` declares `min-version="28" max-version="35"`,
-and the app must render on NC 29, 33, 34 and 35. The boot hook and both CI
-profiles derive their enable/expectation decision from that file through one
-shared parser (`ci/lib/support-range.sh`); no version threshold is hard-coded
-in the hook or `ci/run.sh`.
+`appinfo/info.xml` declares `min-version="33" max-version="35"`. The full visual
+matrix runs every configuration state on NC 33, 34 and 35; the compatibility
+profile keeps a default-state render check on those versions. The boot hook and
+CI profiles derive their enable/expectation decision from `info.xml` through
+one parser (`ci/lib/support-range.sh`); no caller hard-codes a threshold.
 
-The negative control keeps `BASE_SHA=c31d8a243678b4f04348c40fca1e5a8e587a05aa`.
-Its own `info.xml` still ends at 29, so NC 35 must reject it. The positive
-profile and the control therefore differ in source and in outcome.
+The negative control keeps `BASE_SHA` unchanged. NC 35 must reject the
+unpatched app while the patched source renders on the same version.
 
 ## Consequences
 
-- New `ci/baselines/<version>/default/` screenshots are added for 33/34/35 and
-  reviewed as code. The old `compat` baselines are replaced by those real
-  renders; the `negative` baseline stays the stock-UI control.
-- The 30–32 range is declared but unverified; the README states which versions
-  are covered by the visual matrix.
-- A shell test fails if the hook, `ci/run.sh` or the docs disagree with the
+- Baselines live under `ci/baselines/<version>/<state>/` for 33/34/35; the NC
+  29 baselines are removed. They are regenerated in one deliberate commit.
+- Versions 30–32 are neither declared nor tested; the README and CI docs state
+  the supported range and the versions covered by the matrix.
+- Shell tests fail if the hook, `ci/run.sh` or the docs disagree with the
   declared range.

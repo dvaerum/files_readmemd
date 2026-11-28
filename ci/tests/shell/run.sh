@@ -37,7 +37,7 @@ assert_not_has() {
 
 # Deterministic config output regardless of the caller's environment.
 unset CI_PROJECT CI_NEGATIVE_PROJECT NEXTCLOUD_HOST_PORT CI_NEGATIVE_PORT
-unset KEEP_STACK UPDATE_BASELINES FULL_VERSION NEXTCLOUD_VERSION COMPAT_VERSIONS
+unset KEEP_STACK UPDATE_BASELINES FULL_VERSION FULL_VERSIONS NEXTCLOUD_VERSION COMPAT_VERSIONS
 unset NEGATIVE_VERSION BASE_SHA FULL_IMAGE COMPAT_IMAGE NEGATIVE_IMAGE NEXTCLOUD_IMAGE
 unset NC_ADMIN_USER NC_ADMIN_PASSWORD
 
@@ -77,8 +77,9 @@ assert_has "export PROJECT='files_readmemd-ci'" "$full_config" 'full project'
 assert_has "export CI_PROJECT='files_readmemd-ci'" "$full_config" 'full compose project'
 assert_has "export HOST_PORT='8290'" "$full_config" 'full port'
 assert_has "export NEXTCLOUD_HOST_PORT='8290'" "$full_config" 'full compose port'
-assert_has "export NEXTCLOUD_VERSION='29-apache'" "$full_config" 'full version'
-assert_has "export NEXTCLOUD_IMAGE='nextcloud:29-apache'" "$full_config" 'full image'
+assert_has "export NEXTCLOUD_VERSION='33-apache'" "$full_config" 'full version'
+assert_has "export NEXTCLOUD_IMAGE='nextcloud:33-apache'" "$full_config" 'full image'
+assert_has "export FULL_VERSIONS='33-apache 34-apache 35-apache'" "$full_config" 'full version matrix'
 assert_has "export STATE_LIST='default features engines-on filelist-extra'" "$full_config" 'full states'
 assert_has "export KEEP_STACK='0'" "$full_config" 'keep-stack default'
 assert_has "export UPDATE_BASELINES='0'" "$full_config" 'baseline default'
@@ -150,7 +151,7 @@ unset KEEP_STACK UPDATE_BASELINES CI_NEGATIVE_PORT
 docker_log="$tmp/docker.log"
 npm_log="$tmp/npm.log"
 export FAKE_DOCKER_LOG="$docker_log" FAKE_NPM_LOG="$npm_log" FAKE_PS_CONTAINERS=''
-export FAKE_VOLUMES='files_readmemd-ci_db_29-apache files_readmemd-ci-negative_db_29-apache'
+export FAKE_VOLUMES='files_readmemd-ci_db_33-apache files_readmemd-ci-negative_db_33-apache'
 : > "$docker_log"
 : > "$npm_log"
 
@@ -186,7 +187,7 @@ assert_eq 'stack_status stopped' 'files_readmemd-ci stopped' "$status"
 stack_down "$CI_DIR/docker-compose.yml" files_readmemd-ci >/dev/null
 assert_has 'project=files_readmemd-ci args=compose -f' "$(cat "$docker_log")" 'stack_down project binding'
 assert_has '-p files_readmemd-ci down -v --remove-orphans' "$(cat "$docker_log")" 'stack_down arguments'
-assert_has 'volume rm files_readmemd-ci_db_29-apache' "$(cat "$docker_log")" 'stack_down removes own volumes'
+assert_has 'volume rm files_readmemd-ci_db_33-apache' "$(cat "$docker_log")" 'stack_down removes own volumes'
 assert_not_has 'volume rm files_readmemd-ci-negative' "$(cat "$docker_log")" 'stack_down leaves other project volumes'
 
 # A stack must hand the same compose configuration to every later command in
@@ -198,12 +199,12 @@ EOF
 chmod +x "$bin/curl"
 app_source="$tmp/stack-app"
 mkdir -p "$app_source"
-stack_up "$CI_DIR/docker-compose.yml" files_readmemd-ci 8290 29-apache \
-	nextcloud:29-apache "$app_source" >/dev/null
+stack_up "$CI_DIR/docker-compose.yml" files_readmemd-ci 8290 33-apache \
+	nextcloud:33-apache "$app_source" >/dev/null
 assert_eq 'stack_up keeps the app mount for later compose commands' \
 	"$app_source" "$APP_SOURCE"
 assert_eq 'stack_up keeps the version for later compose commands' \
-	'29-apache' "$NEXTCLOUD_VERSION"
+	'33-apache' "$NEXTCLOUD_VERSION"
 assert_eq 'stack_up keeps the host port for later compose commands' \
 	'8290' "$NEXTCLOUD_HOST_PORT"
 unset APP_SOURCE NEXTCLOUD_VERSION NEXTCLOUD_HOST_PORT NEXTCLOUD_IMAGE
