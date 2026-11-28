@@ -50,14 +50,22 @@ function appErrors(observed) {
   return filterAppErrors(observed)
 }
 
+// Configuration is read-only in the browser and travels as initial state on
+// Files pages, not on the settings page being inspected. A throwaway page in
+// the same context observes writes without navigating the page under test.
 async function readAppConfig(page) {
-  return page.evaluate(async () => {
-    const response = await fetch('/apps/files_readmemd/config', {
-      headers: { requesttoken: window.OC.requestToken },
+  const probe = await page.context().newPage()
+  try {
+    await probe.goto('/index.php/apps/files/')
+    const node = probe.locator('#initial-state-files_readmemd-config')
+    await node.waitFor({ state: 'attached' })
+    return await probe.evaluate(() => {
+      const element = document.getElementById('initial-state-files_readmemd-config')
+      return JSON.parse(atob(element.value))
     })
-    if (!response.ok) throw new Error(`config API returned ${response.status}`)
-    return response.json()
-  })
+  } finally {
+    await probe.close()
+  }
 }
 
 module.exports = {

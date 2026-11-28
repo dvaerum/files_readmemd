@@ -21,13 +21,13 @@
  */
 
 import axios from '@nextcloud/axios'
-import { generateUrl } from '@nextcloud/router'
+import { generateOcsUrl } from '@nextcloud/router'
 import { adminControlId, configurableEngineIds, wireKey } from '../engines.js'
 import logger from '../logger.js'
 import { encodePathSegment } from './pathSegment.js'
 import { zone, zoneForAdminToken, zoneIds } from '../zones.js'
 
-const CONFIG_ENDPOINT = 'apps/files_readmemd/config'
+const CONFIG_ENDPOINT = 'apps/files_readmemd/api/v1/config'
 const SUBMIT_PREFIX = 'readmeMD-filelist_submit-'
 const NAME_PREFIX = 'readmeMD-filelist_name-'
 const LIST_PREFIX = 'readmeMD-filelist_'
@@ -83,7 +83,7 @@ function zoneDescriptors() {
  */
 function fileNameUrl(adminToken, fileName) {
 	const { endpointSegment } = zone(zoneForAdminToken(adminToken))
-	return generateUrl(CONFIG_ENDPOINT + '/filenames/' + endpointSegment + '/' + encodePathSegment(fileName))
+	return generateOcsUrl(CONFIG_ENDPOINT + '/filenames/' + endpointSegment + '/' + encodePathSegment(fileName))
 }
 
 /**
@@ -138,7 +138,7 @@ export function bindAdminConfig(root, { request = axiosRequest } = {}) {
 			params.append('key', key)
 			params.append('value', event.target.checked)
 			try {
-				await request({ method: 'post', url: generateUrl(CONFIG_ENDPOINT), params })
+				await request({ method: 'post', url: generateOcsUrl(CONFIG_ENDPOINT), params })
 			} catch (error) {
 				logger.error('Failed to save ' + key, error)
 			}

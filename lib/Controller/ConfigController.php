@@ -19,21 +19,28 @@
  *
  */
 
-namespace OCA\ReadmeMD\Controller ;
+namespace OCA\ReadmeMD\Controller;
 
-use OCP\AppFramework\Controller  ;
-use OCA\ReadmeMD\Services\Config ;
+use OCA\ReadmeMD\Services\Config;
 use OCA\ReadmeMD\View\NextcloudZoneAdminRenderer;
 use OCA\ReadmeMD\View\ZoneAdminView;
+use OCP\AppFramework\Http;
+use OCP\AppFramework\Http\DataResponse;
+use OCP\AppFramework\OCSController;
 use OCP\IRequest;
 use OCP\IL10N;
 
-class ConfigController extends Controller {
-
+/**
+ * Admin writes only. Reads travel with the page as initial state, so there is
+ * no public GET endpoint to expose configuration.
+ */
+class ConfigController extends OCSController
+{
     private Config $config;
     private ZoneAdminView $adminView;
 
-    public function __construct($AppName, IRequest $request, Config $config, IL10N $l) {
+    public function __construct($AppName, IRequest $request, Config $config, IL10N $l)
+    {
         parent::__construct($AppName, $request);
 
         $this->config = $config;
@@ -43,35 +50,31 @@ class ConfigController extends Controller {
         );
     }
 
-    /**
-     * @NoAdminRequired
-     * @PublicPage
-     */
-    public function getConfig() {
-        return $this->config->snapshot()->toWireArray();
-    }
-
-    public function setConfig($key, $value) {
+    public function setConfig($key, $value): DataResponse
+    {
         $key = (string) $key;
         $this->config->setWireValue($key, (string) $value);
 
-        return $this->config->wireValue($key);
+        return new DataResponse($this->config->wireValue($key));
     }
 
-    public function removeFileName($file, $zone) {
+    public function removeFileName($file, $zone): DataResponse
+    {
         if (!$this->config->isKnownZone((string) $zone)) {
-            return null;
+            return new DataResponse(null, Http::STATUS_NOT_FOUND);
         }
         $this->config->removeZoneBaseName((string) $zone, (string) $file);
+
+        return new DataResponse(null);
     }
 
-    public function addFileName ($file, $zone) {
+    public function addFileName($file, $zone): DataResponse
+    {
         if (!$this->config->isKnownZone((string) $zone)) {
-            return null;
+            return new DataResponse(null, Http::STATUS_NOT_FOUND);
         }
         $this->config->addZoneBaseName((string) $zone, (string) $file);
 
-        return $this->adminView->baseNameResponse((string) $zone);
+        return new DataResponse($this->adminView->baseNameResponse((string) $zone));
     }
-
 }

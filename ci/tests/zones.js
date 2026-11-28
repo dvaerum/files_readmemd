@@ -22,6 +22,9 @@ module.exports = {
   zone,
   zoneIds: () => Object.keys(declaration),
   domSelector: (id) => `.${zone(id).domClass}`,
+  // The Zone wrapper and the rendered content both carry the zone class; the
+  // custom element is the stable boundary for whole-zone screenshots.
+  zoneElementSelector: (id) => `readmemd-zone.${zone(id).domClass}`,
   adminLinkSelector: (id, filename) =>
     `a[data-zone="${zone(id).adminToken}"][data-filename="${filename}"]`,
   configKey: (id) => zone(id).configKey,

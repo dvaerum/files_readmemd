@@ -14,7 +14,10 @@ const { axiosMock, loggerMock } = vi.hoisted(() => ({
 }))
 
 vi.mock('@nextcloud/axios', () => ({ default: axiosMock }))
-vi.mock('@nextcloud/router', () => ({ generateUrl: (url) => '/' + url }))
+vi.mock('@nextcloud/router', () => ({
+	generateUrl: (url) => '/' + url,
+	generateOcsUrl: (url) => '/ocs/v2.php/' + url,
+}))
 vi.mock('../../src/logger.js', () => ({ default: loggerMock }))
 
 import { bindAdminConfig } from '../../src/modules/adminConfig.js'
@@ -60,7 +63,7 @@ describe('bindAdminConfig', () => {
 		expect(request).toHaveBeenCalledTimes(1)
 		const descriptor = request.mock.calls[0][0]
 		expect(descriptor.method).toBe('post')
-		expect(descriptor.url).toBe('/apps/files_readmemd/config')
+		expect(descriptor.url).toBe('/ocs/v2.php/apps/files_readmemd/api/v1/config')
 		expect(descriptor.params.get('key')).toBe('show_asciidoc')
 		expect(descriptor.params.get('value')).toBe('true')
 	})
@@ -91,7 +94,7 @@ describe('bindAdminConfig', () => {
 		expect(request.mock.calls.map(([descriptor]) => [descriptor.method, descriptor.url])).toEqual(
 			zoneIds().map((id) => [
 				'put',
-				'/apps/files_readmemd/config/filenames/' + zone(id).endpointSegment + '/EXTRA-' + zone(id).adminToken,
+				'/ocs/v2.php/apps/files_readmemd/api/v1/config/filenames/' + zone(id).endpointSegment + '/EXTRA-' + zone(id).adminToken,
 			]),
 		)
 	})
@@ -114,7 +117,7 @@ describe('bindAdminConfig', () => {
 		expect(request.mock.calls.map(([descriptor]) => [descriptor.method, descriptor.url])).toEqual(
 			zoneIds().map((id) => [
 				'delete',
-				'/apps/files_readmemd/config/filenames/' + zone(id).endpointSegment + '/REMOVE-' + zone(id).adminToken,
+				'/ocs/v2.php/apps/files_readmemd/api/v1/config/filenames/' + zone(id).endpointSegment + '/REMOVE-' + zone(id).adminToken,
 			]),
 		)
 	})
@@ -128,7 +131,7 @@ describe('bindAdminConfig', () => {
 		await flush()
 
 		expect(request.mock.calls[0][0].url)
-			.toBe('/apps/files_readmemd/config/filenames/footer/WHAT%3F')
+			.toBe('/ocs/v2.php/apps/files_readmemd/api/v1/config/filenames/footer/WHAT%3F')
 	})
 
 	it('encodes every reserved character in a Base name segment for adds', async () => {
@@ -140,7 +143,7 @@ describe('bindAdminConfig', () => {
 		await flush()
 
 		expect(request.mock.calls[0][0].url)
-			.toBe('/apps/files_readmemd/config/filenames/footer/README%3F%26%2F%23%2B%3D%20%25')
+			.toBe('/ocs/v2.php/apps/files_readmemd/api/v1/config/filenames/footer/README%3F%26%2F%23%2B%3D%20%25')
 	})
 
 	it('encodes every reserved character in a Base name segment for removes', async () => {
@@ -153,7 +156,7 @@ describe('bindAdminConfig', () => {
 		await flush()
 
 		expect(request.mock.calls[0][0].url)
-			.toBe('/apps/files_readmemd/config/filenames/footer/README%3F%26%2F%23%2B%3D%20%25')
+			.toBe('/ocs/v2.php/apps/files_readmemd/api/v1/config/filenames/footer/README%3F%26%2F%23%2B%3D%20%25')
 	})
 
 	it('appends a list item tagged with the Zone after a successful add', async () => {
@@ -214,7 +217,7 @@ describe('bindAdminConfig', () => {
 		click(document.querySelector('[data-filename="LATER"]'))
 		await flush()
 
-		expect(request.mock.calls[0][0].url).toBe('/apps/files_readmemd/config/filenames/header/LATER')
+		expect(request.mock.calls[0][0].url).toBe('/ocs/v2.php/apps/files_readmemd/api/v1/config/filenames/header/LATER')
 		expect(document.getElementById('readmeMD-filelist-LATER')).toBeNull()
 	})
 
@@ -259,9 +262,9 @@ describe('bindAdminConfig', () => {
 		await flush()
 
 		const [postUrl, params, options] = axiosMock.post.mock.calls[0]
-		expect(postUrl).toBe('/apps/files_readmemd/config')
+		expect(postUrl).toBe('/ocs/v2.php/apps/files_readmemd/api/v1/config')
 		expect(params.get('key')).toBe('show_asciidoc')
 		expect(options.headers['Content-Type']).toBe('application/x-www-form-urlencoded; charset=UTF-8')
-		expect(axiosMock.put).toHaveBeenCalledWith('/apps/files_readmemd/config/filenames/header/EXTRA-header')
+		expect(axiosMock.put).toHaveBeenCalledWith('/ocs/v2.php/apps/files_readmemd/api/v1/config/filenames/header/EXTRA-header')
 	})
 })

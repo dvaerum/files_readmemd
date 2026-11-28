@@ -16,6 +16,7 @@ use PHPUnit\Framework\TestCase;
 class ConfigControllerTest extends TestCase
 {
     private ConfigController $controller;
+    private Config $config;
 
     /** @var array<string, string> */
     private array $values = [];
@@ -35,43 +36,31 @@ class ConfigControllerTest extends TestCase
                 $this->values[$key] = $value;
             }
         );
+        $this->config = new Config($configMock, 'files_readmemd');
         $this->controller = new ConfigController(
             'files_readmemd',
             $this->createMock(IRequest::class),
-            new Config($configMock, 'files_readmemd'),
+            $this->config,
             $this->createMock(IL10N::class)
         );
 
         return $this->controller;
     }
 
-    public function testGetConfig(): void
+    public function testSetConfigReturnsTheWrittenWireValue(): void
     {
-        self::assertSame([
-            'show_asciidoc' => 'false',
-            'show_html' => 'false',
-            'yellow_back' => 'true',
-            'show_title' => 'true',
-            'auto_refresh' => 'false',
-            'disable_workspace' => 'true',
-            'fileslist_header' => ['HEADER'],
-            'fileslist_footer' => ['README'],
-        ], $this->newController()->getConfig());
-    }
+        $response = $this->newController()->setConfig('show_html', 'true');
 
-    public function testSetConfig(): void
-    {
-        $controller = $this->newController();
-        self::assertSame('true', $controller->setConfig('show_html', 'true'));
-        self::assertSame('true', $controller->getConfig()['show_html']);
+        self::assertSame('true', $response->getData());
+        self::assertSame('true', $this->config->snapshot()->toWireArray()['show_html']);
     }
 
     public function testSetConfigNormalizesLegacyBoolean(): void
     {
-        $controller = $this->newController();
-        self::assertSame('true', $controller->setConfig('show_html', '1'));
+        $response = $this->newController()->setConfig('show_html', '1');
+
+        self::assertSame('true', $response->getData());
         self::assertSame('true', $this->values['show_html']);
-        self::assertSame('true', $controller->getConfig()['show_html']);
     }
 
     public function testSetConfigRejectsUnknownKey(): void
@@ -84,21 +73,23 @@ class ConfigControllerTest extends TestCase
     public function testAddAndRemoveFileName(): void
     {
         $controller = $this->newController();
-        self::assertNull($controller->addFileName('README.md', 'header'));
-        self::assertSame(['HEADER', 'README.md'], $controller->getConfig()['fileslist_header']);
+        self::assertNull($controller->addFileName('README.md', 'nonexistent')->getData());
+        self::assertSame(404, $controller->addFileName('README.md', 'nonexistent')->getStatus());
+        self::assertNull($controller->addFileName('README.md', 'header')->getData());
+        self::assertSame(['HEADER', 'README.md'], $this->config->zoneBaseNames('header'));
 
         $controller->removeFileName('HEADER', 'header');
-        self::assertSame(['README.md'], $controller->getConfig()['fileslist_header']);
+        self::assertSame(['README.md'], $this->config->zoneBaseNames('header'));
     }
 
     public function testAddAndRemoveFooterFileName(): void
     {
         $controller = $this->newController();
-        self::assertSame('success', $controller->addFileName('FOOTER', 'footer'));
-        self::assertSame(['README', 'FOOTER'], $controller->getConfig()['fileslist_footer']);
+        self::assertSame('success', $controller->addFileName('FOOTER', 'footer')->getData());
+        self::assertSame(['README', 'FOOTER'], $this->config->zoneBaseNames('footer'));
 
         $controller->removeFileName('FOOTER', 'footer');
-        self::assertSame(['README'], $controller->getConfig()['fileslist_footer']);
+        self::assertSame(['README'], $this->config->zoneBaseNames('footer'));
     }
 
     public function testReservedCharactersRoundTripThroughAnEncodedUrlSegment(): void
@@ -110,10 +101,10 @@ class ConfigControllerTest extends TestCase
         self::assertSame('README?&/#+= %', $baseName);
 
         $controller = $this->newController();
-        self::assertSame('success', $controller->addFileName($baseName, 'footer'));
-        self::assertSame(['README', $baseName], $controller->getConfig()['fileslist_footer']);
+        self::assertSame('success', $controller->addFileName($baseName, 'footer')->getData());
+        self::assertSame(['README', $baseName], $this->config->zoneBaseNames('footer'));
 
         $controller->removeFileName($baseName, 'footer');
-        self::assertSame(['README'], $controller->getConfig()['fileslist_footer']);
+        self::assertSame(['README'], $this->config->zoneBaseNames('footer'));
     }
 }

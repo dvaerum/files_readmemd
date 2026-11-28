@@ -78,16 +78,24 @@ class ListenerTest extends TestCase
         $listener = new class($config, $initialState) extends LoadAdditionalScriptsListener {
             /** @var list<array{0: string, 1: string}> */
             public array $scriptCalls = [];
+            /** @var list<array{0: string, 1: string}> */
+            public array $styleCalls = [];
 
             protected function addScript(string $app, string $script): void
             {
                 $this->scriptCalls[] = [$app, $script];
+            }
+
+            protected function addStyle(string $app, string $script): void
+            {
+                $this->styleCalls[] = [$app, $script];
             }
         };
 
         $listener->handle(new Event());
 
         self::assertSame([['files_readmemd', 'files_readmemd-main']], $listener->scriptCalls);
+        self::assertSame([['files_readmemd', 'readmemd']], $listener->styleCalls);
     }
 
     public function testPublicListenerRegistersItsOwnScriptAsset(): void
@@ -96,16 +104,24 @@ class ListenerTest extends TestCase
         $listener = new class($config, $initialState) extends LoadAdditionalPublicScriptsListener {
             /** @var list<array{0: string, 1: string}> */
             public array $scriptCalls = [];
+            /** @var list<array{0: string, 1: string}> */
+            public array $styleCalls = [];
 
             protected function addScript(string $app, string $script): void
             {
                 $this->scriptCalls[] = [$app, $script];
+            }
+
+            protected function addStyle(string $app, string $script): void
+            {
+                $this->styleCalls[] = [$app, $script];
             }
         };
 
         $listener->handle(new Event());
 
         self::assertSame([['files_readmemd', 'files_readmemd-public']], $listener->scriptCalls);
+        self::assertSame([['files_readmemd', 'readmemd']], $listener->styleCalls);
     }
 
     public function testSharedHandlerRegistersTheScriptBeforePublishingWireState(): void
@@ -126,17 +142,23 @@ class ListenerTest extends TestCase
             {
                 $this->order[] = ['addScript', $app, $script];
             }
+
+            protected function addStyle(string $app, string $script): void
+            {
+                $this->order[] = ['addStyle', $app, $script];
+            }
         };
 
         $listener->handle(new Event());
 
         $calls = $order->getArrayCopy();
-        self::assertCount(2, $calls);
+        self::assertCount(3, $calls);
         self::assertSame(['addScript', 'files_readmemd', 'files_readmemd-shared'], $calls[0]);
-        self::assertSame('initialState', $calls[1][0]);
-        self::assertSame('config', $calls[1][1]);
-        self::assertSame('true', $calls[1][2]['show_asciidoc']);
-        self::assertSame(['README', 'FEATURES'], $calls[1][2]['fileslist_footer']);
+        self::assertSame(['addStyle', 'files_readmemd', 'readmemd'], $calls[1]);
+        self::assertSame('initialState', $calls[2][0]);
+        self::assertSame('config', $calls[2][1]);
+        self::assertSame('true', $calls[2][2]['show_asciidoc']);
+        self::assertSame(['README', 'FEATURES'], $calls[2][2]['fileslist_footer']);
     }
 
     public function testApplicationRegistersTwoDistinctEventListeners(): void

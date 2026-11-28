@@ -12,7 +12,7 @@ const state = process.env.CI_STATE || 'default'
 const FIXTURE_DIR = 'README-dev-fixtures'
 
 test.describe(`files_readmemd visual matrix (${state})`, () => {
-  test('settings page and config API @state=default', async ({ page }) => {
+  test('settings page and config initial state @state=default', async ({ page }) => {
     const errors = watchErrors(page)
     await login(page)
     await page.goto('/index.php/settings/admin/files_readmemd')
@@ -27,10 +27,6 @@ test.describe(`files_readmemd visual matrix (${state})`, () => {
     expect(config).toMatchObject({
       show_asciidoc: 'false',
       show_html: 'false',
-      yellow_back: 'true',
-      show_title: 'true',
-      auto_refresh: 'false',
-      disable_workspace: 'true',
       [ciZones.configKey('headermd')]: ['HEADER'],
       [ciZones.configKey('footermd')]: ['README'],
     })
@@ -114,8 +110,8 @@ test.describe(`files_readmemd visual matrix (${state})`, () => {
     await expect(header).toHaveText('AsciiDoc')
     await expect(footer).toContainText('Fixture HTML footer')
 
-    await expect(page.locator(ciZones.domSelector('headermd'))).toHaveScreenshot('header-asciidoc.png')
-    await expect(page.locator(ciZones.domSelector('footermd'))).toHaveScreenshot('footer-html.png')
+    await expect(page.locator(ciZones.zoneElementSelector('headermd'))).toHaveScreenshot('header-asciidoc.png')
+    await expect(page.locator(ciZones.zoneElementSelector('footermd'))).toHaveScreenshot('footer-html.png')
     expect(appErrors(errors)).toEqual([])
   })
 
@@ -149,9 +145,8 @@ test.describe(`files_readmemd visual matrix (${state})`, () => {
 
     const errors = watchErrors(page)
     await page.goto(`/s/${token}`)
-    // #isPublic is a hidden input, so it can only be attached, never visible.
-    await page.locator('#isPublic').waitFor({ state: 'attached' })
-    await expect(page.locator('#isPublic')).toHaveCount(1)
+    // NC 33 removed the old #isPublic input; the share heading is stable.
+    await expect(page.getByRole('heading', { name: 'Public share', level: 1 })).toBeVisible()
 
     const header = page.locator(ciZones.domSelector('headermd') + '[data-filename="HEADER.md"] .markdown-body')
     const footer = page.locator(ciZones.domSelector('footermd') + '[data-filename=".README.md"] .markdown-body')

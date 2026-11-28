@@ -4,8 +4,8 @@
  *
  * @license GNU AGPL version 3 or any later version
  *
- * This program is free software: you can redistribute it and/or modify it under
- * the terms of the GNU Affero General Public License as
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as
  * published by the Free Software Foundation, either version 3 of the
  * License, or (at your option) any later version.
  *
@@ -30,8 +30,9 @@ use OCP\Util;
 /**
  * Shared implementation for script listeners.
  *
- * Concrete listeners supply only their SCRIPT_ASSET. The addScript method is
- * the substitution seam; handle() owns the call order and the wire snapshot.
+ * Concrete listeners supply only their SCRIPT_ASSET. Init scripts load before
+ * Files, which avoids the header-registration race; the matching stylesheet is
+ * added separately because init scripts do not pull CSS in automatically.
  */
 abstract class AbstractScriptListener implements IEventListener
 {
@@ -47,18 +48,24 @@ abstract class AbstractScriptListener implements IEventListener
     public function handle(Event $event): void
     {
         $this->addScript('files_readmemd', static::SCRIPT_ASSET);
+        // The stylesheet is a real css/ asset; the script asset is a webpack
+        // bundle and has no matching .css file on disk.
+        $this->addStyle('files_readmemd', 'readmemd');
         $this->initialState->provideInitialState(
             'config',
             $this->config->snapshot()->toWireArray()
         );
     }
 
-    /**
-     * Register the script with Nextcloud. Kept as a seam so tests can assert
-     * the asset without booting the server.
-     */
+    /** @return void substitution seam for tests */
     protected function addScript(string $app, string $script): void
     {
-        Util::addscript($app, $script);
+        Util::addInitScript($app, $script);
+    }
+
+    /** @return void substitution seam for tests */
+    protected function addStyle(string $app, string $style): void
+    {
+        Util::addStyle($app, $style);
     }
 }

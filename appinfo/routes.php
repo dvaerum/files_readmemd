@@ -19,12 +19,10 @@
  *
  */
 
- return [
-    'routes' => [
-        [ 'name' => 'config#getConfig',     'url' => '/config', 'verb' => 'GET'  ],
-        [ 'name' => 'config#setConfig',     'url' => '/config', 'verb' => 'POST' ],
-        [ 'name' => 'config#addFileName',   'url' => '/config/filenames/{zone}/{file}', 'verb' => 'PUT' ],
-        [ 'name' => 'config#removeFileName','url' => '/config/filenames/{zone}/{file}', 'verb' => 'DELETE' ]
+return [
+    'ocs' => [
+        [ 'name' => 'config#setConfig',     'url' => '/api/v1/config', 'verb' => 'POST' ],
+        [ 'name' => 'config#addFileName',   'url' => '/api/v1/config/filenames/{zone}/{file}', 'verb' => 'PUT' ],
+        [ 'name' => 'config#removeFileName','url' => '/api/v1/config/filenames/{zone}/{file}', 'verb' => 'DELETE' ]
     ]
-
- ];
+];
